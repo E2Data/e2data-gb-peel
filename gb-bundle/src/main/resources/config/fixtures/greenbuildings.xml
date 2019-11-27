@@ -15,12 +15,12 @@
             <value><![CDATA[
               -v -c net.sparkworks.stream.SparksProcessor  \
               ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
-              --filename ${system.hadoop-3.path.input}/dataset_2000_1_60
+              --filename ${system.hadoop-3.path.input}/dataset_2000_1_5
             ]]></value>
         </constructor-arg>
         <constructor-arg name="inputs">
             <set>
-                <ref bean="dataset.gb.dataset_2000_1_60" />
+                <ref bean="dataset.gb.dataset_2000_1_5" />
             </set>
         </constructor-arg>
         <constructor-arg name="outputs">
@@ -35,9 +35,9 @@
     * Inputs
     *************************************************************************-->
 
-    <bean id="dataset.gb.dataset_2000_1_60" class="org.peelframework.core.beans.data.CopiedDataSet">
-        <constructor-arg name="src" value="${app.path.datasets}/dataset_2000_1_60"/>
-        <constructor-arg name="dst" value="${system.hadoop-3.path.input}/dataset_2000_1_60"/>
+    <bean id="dataset.gb.dataset_2000_1_5" class="org.peelframework.core.beans.data.CopiedDataSet">
+        <constructor-arg name="src" value="${app.path.datasets}/dataset_2000_1_5"/>
+        <constructor-arg name="dst" value="${system.hadoop-3.path.input}/dataset_2000_1_5"/>
         <constructor-arg name="fs" ref="hdfs-3.1.1"/>
     </bean>
 
