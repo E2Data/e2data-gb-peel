@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--suppress ALL -->
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.springframework.org/schema/beans"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+
+    <!--************************************************************************
+    * Experiments
+    *************************************************************************-->
+
+    <!-- experiment with fixed dataset -->
+    <bean id="experiment.gb" parent="experiment.flink-1.7.2" abstract="true">
+        <constructor-arg name="command">
+            <value><![CDATA[
+              -v -c net.sparkworks.stream.SparksProcessor  \
+              ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
+              --filename ${system.hadoop-3.path.input}/dataset_2000_1_60
+            ]]></value>
+        </constructor-arg>
+        <constructor-arg name="inputs">
+            <set>
+                <ref bean="dataset.gb.dataset_2000_1_60" />
+            </set>
+        </constructor-arg>
+        <constructor-arg name="outputs">
+            <set value-type="org.peelframework.core.beans.data.ExperimentOutput">
+                <ref bean="gb.output"/>
+            </set>
+        </constructor-arg>
+        <constructor-arg name="config" value=""/>
+    </bean>
+
+    <!--************************************************************************
+    * Inputs
+    *************************************************************************-->
+
+    <bean id="dataset.gb.dataset_2000_1_60" class="org.peelframework.core.beans.data.CopiedDataSet">
+        <constructor-arg name="src" value="${app.path.datasets}/dataset_2000_1_60"/>
+        <constructor-arg name="dst" value="${system.hadoop-3.path.input}/dataset_2000_1_60"/>
+        <constructor-arg name="fs" ref="hdfs-3.1.1"/>
+    </bean>
+
+    <!--************************************************************************
+    * Output
+    *************************************************************************-->
+
+    <bean id="gb.output" class="org.peelframework.core.beans.data.ExperimentOutput">
+        <constructor-arg name="path" value="${system.hadoop-3.path.output}/"/>
+        <constructor-arg name="fs" ref="hdfs-3.1.1"/>
+    </bean>
+
+    <!--************************************************************************
+    * Suites
+    *************************************************************************-->
+
+    <!-- suite for local development and testing -->
+    <bean id="gb.default" class="org.peelframework.core.beans.experiment.ExperimentSuite">
+        <constructor-arg name="experiments">
+            <list value-type="org.peelframework.core.beans.experiment.Experiment">
+                <bean parent="experiment.gb">
+                    <constructor-arg name="name" value="gb.default"/>
+                    <constructor-arg name="config">
+                        <value><![CDATA[
+                                  system.flink.config.parallelism         = 1
+                                  system.flink.config.numberOfTaskSlots   = 1
+                        ]]></value>
+                    </constructor-arg>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <!-- suite for KALEAO -->
+    <bean id="gb.scale-out" class="org.peelframework.core.beans.experiment.ExperimentSuite">
+        <constructor-arg name="experiments">
+            <bean class="org.peelframework.core.beans.experiment.ExperimentSequence">
+                <constructor-arg name="paramName" value="topXXX-X"/>
+                <constructor-arg name="paramVals">
+                    <list>
+                        <value>top001-1</value>
+                        <value>top001-2</value>
+                        <value>top001-4</value>
+                        <value>top001-6</value>
+                        <value>top001-8</value>
+                        <value>top002-1</value>
+                        <value>top002-2</value>
+                        <value>top002-4</value>
+                        <value>top002-6</value>
+                        <value>top002-8</value>
+                        <value>top003-1</value>
+                        <value>top003-2</value>
+                        <value>top003-4</value>
+                        <value>top003-6</value>
+                        <value>top003-8</value>
+                        <value>top004-1</value>
+                        <value>top004-2</value>
+                        <value>top004-4</value>
+                        <value>top004-6</value>
+                        <value>top004-8</value>
+                    </list>
+                </constructor-arg>
+                <constructor-arg name="prototypes">
+                    <list value-type="org.peelframework.core.beans.experiment.Experiment">
+                        <bean parent="experiment.gb">
+                            <constructor-arg name="name" value="gb.__topXXX-X__"/>
+                            <constructor-arg name="config">
+                                <value><![CDATA[
+                                  system.default.config.slaves            = ${env.slaves.__topXXX-X__.hosts}
+                                  system.flink.config.parallelism         = ${env.slaves.__topXXX-X__.total.parallelism}
+                                  system.flink.config.numberOfTaskSlots   = ${env.slaves.__topXXX-X__.per-node.numberOfTaskSlots}
+                                ]]></value>
+                            </constructor-arg>
+                        </bean>
+                    </list>
+                </constructor-arg>
+            </bean>
+        </constructor-arg>
+
+    </bean>
+
+</beans>
