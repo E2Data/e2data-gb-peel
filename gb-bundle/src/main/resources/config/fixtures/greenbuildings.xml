@@ -10,7 +10,7 @@
     *************************************************************************-->
 
     <!-- experiment with fixed dataset -->
-    <bean id="experiment.gb" parent="experiment.flink-1.7.2" abstract="true">
+    <bean id="experiment.gb" parent="experiment.flink-1.7.0" abstract="true">
         <constructor-arg name="command">
             <value><![CDATA[
               -v -c net.sparkworks.stream.SparksProcessor  \
@@ -81,23 +81,18 @@
                         <value>top001-1</value>
                         <value>top001-2</value>
                         <value>top001-4</value>
-                        <value>top001-6</value>
-                        <value>top001-8</value>
                         <value>top002-1</value>
                         <value>top002-2</value>
                         <value>top002-4</value>
-                        <value>top002-6</value>
-                        <value>top002-8</value>
-                        <value>top003-1</value>
-                        <value>top003-2</value>
-                        <value>top003-4</value>
-                        <value>top003-6</value>
-                        <value>top003-8</value>
                         <value>top004-1</value>
                         <value>top004-2</value>
                         <value>top004-4</value>
-                        <value>top004-6</value>
-                        <value>top004-8</value>
+                        <value>top008-1</value>
+                        <value>top008-2</value>
+                        <value>top008-4</value>
+                        <value>top016-1</value>
+                        <value>top016-2</value>
+                        <value>top016-4</value>
                     </list>
                 </constructor-arg>
                 <constructor-arg name="prototypes">
@@ -106,9 +101,9 @@
                             <constructor-arg name="name" value="gb.__topXXX-X__"/>
                             <constructor-arg name="config">
                                 <value><![CDATA[
-                                  system.default.config.slaves            = ${env.slaves.__topXXX-X__.hosts}
-                                  system.flink.config.parallelism         = ${env.slaves.__topXXX-X__.total.parallelism}
-                                  system.flink.config.numberOfTaskSlots   = ${env.slaves.__topXXX-X__.per-node.numberOfTaskSlots}
+                                  system.default.config.slaves                           = ${env.scale-out.__topXXX-X__.workers}
+                                  system.flink.config.yaml.taskmanager.numberOfTaskSlots = ${env.scale-out.__topXXX-X__.parallelism.per-node}
+                                  system.flink.config.yaml.parallelism.default           = ${env.scale-out.__topXXX-X__.parallelism.total}
                                 ]]></value>
                             </constructor-arg>
                         </bean>
