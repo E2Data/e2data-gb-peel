@@ -10,10 +10,10 @@
     *************************************************************************-->
 
     <!-- experiment with fixed dataset -->
-    <bean id="experiment.gb" parent="experiment.flink-1.7.0" abstract="true">
+    <bean id="experiment.gb" parent="experiment.flink-1.9.1" abstract="true">
         <constructor-arg name="command">
             <value><![CDATA[
-              -v -c net.sparkworks.stream.SparksProcessor  \
+              -v -c net.sparkworks.batch.SparksDataSetProcessor  \
               ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
               --filename ${system.hadoop-3.path.input}/dataset_2000_1_5
             ]]></value>
