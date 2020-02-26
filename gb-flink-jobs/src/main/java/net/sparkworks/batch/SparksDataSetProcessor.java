@@ -77,31 +77,55 @@ public class SparksDataSetProcessor {
                 groupedDataSource
                         .reduceGroup(new MinGroupReduceFunction())
                         .count());
-        
+
+        long jobRuntime = env.getLastJobExecutionResult()
+                             .getNetRuntime(TimeUnit.MILLISECONDS);
+        System.out.println(String.format("Min Reduction: %d ms", jobRuntime));
+        long totalRuntime = jobRuntime;
+
         System.out.println("Max Reduction " +
                 groupedDataSource
                         .reduceGroup(new MaxGroupReduceFunction())
                         .count());
-        
+
+        jobRuntime = env.getLastJobExecutionResult()
+                             .getNetRuntime(TimeUnit.MILLISECONDS);
+        System.out.println(String.format("Max Reduction: %d ms", jobRuntime));
+        totalRuntime += jobRuntime;
+
         System.out.println("Sum Reduction " +
                 groupedDataSource
                         .reduceGroup(new SumGroupReduceFunction())
                         .count());
-        
+
+        jobRuntime = env.getLastJobExecutionResult()
+                        .getNetRuntime(TimeUnit.MILLISECONDS);
+        System.out.println(String.format("Sum Reduction: %d ms", jobRuntime));
+        totalRuntime += jobRuntime;
+
         System.out.println("Average Reduction " +
                 groupedDataSource
                         .reduceGroup(new AverageGroupReduceFunction())
                         .count());
-        
-        
+
+        jobRuntime = env.getLastJobExecutionResult()
+                        .getNetRuntime(TimeUnit.MILLISECONDS);
+        System.out.println(String.format("Average Reduction: %d ms", jobRuntime));
+        totalRuntime += jobRuntime;
+
         System.out.println("Outliers Detection Reduction " +
                 groupedDataSource
                         .reduceGroup(new OutliersDetectionGroupReduceFunction()).count());
-        
+
+        jobRuntime = env.getLastJobExecutionResult()
+                        .getNetRuntime(TimeUnit.MILLISECONDS);
+        System.out.println(String.format("Outliers Detection Reduction: %d ms", jobRuntime));
+        totalRuntime += jobRuntime;
+
         //        final JobExecutionResult jobExecutionResult = env.execute("SparkWorks DataSet Window Processor");
-        
+
         System.out.println(String.format("SparkWorks DataSet Window Processor Job took: %d ms with parallelism: %d",
-                env.getLastJobExecutionResult().getNetRuntime(TimeUnit.MILLISECONDS), env.getParallelism()));
+                                         totalRuntime, env.getParallelism()));
     }
     
     public static class SparksSensorDataLineSplitter implements FlatMapFunction<String, Tuple3<String, Double, Long>> {
