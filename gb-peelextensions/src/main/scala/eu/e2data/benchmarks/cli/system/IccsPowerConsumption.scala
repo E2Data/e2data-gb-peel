@@ -16,7 +16,7 @@ class IccsPowerConsumption (
                              configKey    : String,
                              lifespan     : Lifespan,
                              dependencies : Set[System] = Set(),
-                             mc           : Mustache.Compiler) extends System("iccs-power-consumption", version, configKey, lifespan, dependencies, mc) {
+                             mc           : Mustache.Compiler) extends System("pdu", version, configKey, lifespan, dependencies, mc) {
 
   var pid = "";
 
@@ -31,7 +31,7 @@ class IccsPowerConsumption (
     val hosts = master + slaves
 
     val utilsPath = config.getString("app.path.utils")
-    val logDir = Paths.get(run.home, "logs", name, beanName)
+    val logDir = Paths.get(run.home, "logs", name)
     if (!Files.exists(logDir)) {
       Files.createDirectories(logDir)
       logger.info(s"Ensuring dstat results folder '$logDir' exists")
