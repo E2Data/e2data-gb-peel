@@ -5,7 +5,7 @@ import org.peelframework.core.beans.system.Lifespan
 import org.springframework.context.{ApplicationContext, ApplicationContextAware}
 import org.springframework.context.annotation.{Bean, Configuration}
 
-@Configuration
+//@Configuration
 class Extensions extends ApplicationContextAware {
 
   var ctx: ApplicationContext = null
