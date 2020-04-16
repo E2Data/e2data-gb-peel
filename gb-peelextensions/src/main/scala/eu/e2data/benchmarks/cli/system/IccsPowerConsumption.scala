@@ -20,7 +20,7 @@ class IccsPowerConsumption (
 
   def enabled = config.getBoolean("system.pdu.enabled")
 
-  var pid = -1;
+  var pid = 0;
 
   override def configuration() = SystemConfig(config, {
 //    val conf = config.getString(s"system.$configKey.path.config")
@@ -43,15 +43,16 @@ class IccsPowerConsumption (
         logger.info(s"Ensuring log folder '$logDir' exists")
       }
       val nodes = String.join(" ", hosts)
-      pid = (shell ! s"""  nohup python $utilsPath/pyscripts/powerScript.py $logDir/pdu.log $nodes >/dev/null 2>/dev/null & echo $$!' """)
-      logger.info("Start PDU monitoring for nodes: {}", nodes)
+      val processId = (shell !! s""" nohup python $utilsPath/pyscripts/powerScript.py $logDir/pdu.log $nodes >/dev/null 2>/dev/null & echo $$! """).trim.toInt
+      logger.info(s"Start PDU monitoring for nodes: $nodes with PID: $processId")
+      pid = processId
     }
   }
 
   override def afterRun(run: Experiment.Run[System]): Unit = {
     if (enabled) {
-      shell ! s"kill ${pid}"
-      logger.info(s"Stop PDU monitoring process with PID: ${pid}'")
+      shell ! s"kill $pid"
+      logger.info(s"Stop PDU monitoring process with PID: $pid")
     }
   }
 
@@ -64,7 +65,10 @@ class IccsPowerConsumption (
   }
 
   override def isRunning = {
-    (shell ! s"""ps -p `cat ${config.getString("system.flink.config.yaml.env.pid.dir")}/flink-*.pid`""") == 0
+    (shell ! s"""ps -p $pid""") == 0
+    // maybe query YARN rest API
+    //val user = config.getString(s"system.$configKey.user")
+    //(shell ! s"""ls /tmp/.yarn-properties-$user""") == 0
   }
 
 }
