@@ -15,31 +15,8 @@
     * Overridden system beans
     *************************************************************************-->
 
-    <bean id="flink-yarn-1.7.0" class="org.peelframework.flink.beans.system.FlinkYarnSession" parent="system">
-        <constructor-arg name="version" value="1.7.0" />
-        <constructor-arg name="configKey" value="flink" />
-        <constructor-arg name="lifespan" value="EXPERIMENT"/>
-        <constructor-arg name="dependencies">
-            <set value-type="org.peelframework.core.beans.system.System">
-                <ref bean="hdfs-3.1.1"/>
-                <ref bean="yarn-3.1.1"/>
-            </set>
-        </constructor-arg>
-    </bean>
-
-    <bean id="flink-1.7.0" class="org.peelframework.flink.beans.system.FlinkStandaloneCluster" parent="system">
-        <constructor-arg name="version" value="1.7.0" />
-        <constructor-arg name="configKey" value="flink" />
-        <constructor-arg name="lifespan" value="EXPERIMENT"/>
-        <constructor-arg name="dependencies">
-            <set value-type="org.peelframework.core.beans.system.System">
-                <ref bean="hdfs-3.1.1"/>
-            </set>
-        </constructor-arg>
-    </bean>
-
-    <bean id="flink-yarn-1.9.1" class="org.peelframework.flink.beans.system.FlinkYarnSession" parent="system">
-        <constructor-arg name="version" value="1.7.0" /> <!-- version 1.7.0 hack to generate the log4j-yarn-session.properties -->
+    <bean id="flink-yarn-1.11.1" class="org.peelframework.flink.beans.system.FlinkYarnSession" parent="system">
+        <constructor-arg name="version" value="1.11.1" /> <!-- version 1.11.1 hack to generate the log4j-yarn-session.properties -->
         <constructor-arg name="configKey" value="flink" />
         <constructor-arg name="lifespan" value="EXPERIMENT"/>
         <constructor-arg name="dependencies">
@@ -51,8 +28,8 @@
         </constructor-arg>
     </bean>
 
-    <bean id="flink-1.9.1" class="org.peelframework.flink.beans.system.FlinkStandaloneCluster" parent="system">
-        <constructor-arg name="version" value="1.9.1" />
+    <bean id="flink-1.11.1" class="org.peelframework.flink.beans.system.FlinkStandaloneCluster" parent="system">
+        <constructor-arg name="version" value="1.11.1" />
         <constructor-arg name="configKey" value="flink" />
         <constructor-arg name="lifespan" value="EXPERIMENT"/>
         <constructor-arg name="dependencies">
@@ -96,8 +73,8 @@
         </constructor-arg>
     </bean>
 
-    <bean id="e2data-flink-1.7.0" class="org.peelframework.flink.beans.system.FlinkStandaloneCluster" parent="system">
-        <constructor-arg name="version" value="1.7.0" />
+    <bean id="e2data-flink-1.11.1" class="org.peelframework.flink.beans.system.FlinkStandaloneCluster" parent="system">
+        <constructor-arg name="version" value="1.11.1" />
         <constructor-arg name="configKey" value="flink" />
         <constructor-arg name="lifespan" value="EXPERIMENT"/>
         <constructor-arg name="dependencies">
@@ -105,8 +82,8 @@
         </constructor-arg>
     </bean>
 
-    <bean id="e2data-flink-yarn-1.7.0" class="org.peelframework.flink.beans.system.FlinkYarnSession" parent="system">
-        <constructor-arg name="version" value="1.7.0" />
+    <bean id="e2data-flink-yarn-1.11.1" class="org.peelframework.flink.beans.system.FlinkYarnSession" parent="system">
+        <constructor-arg name="version" value="1.11.1" />
         <constructor-arg name="configKey" value="flink" />
         <constructor-arg name="lifespan" value="EXPERIMENT"/>
         <constructor-arg name="dependencies">
@@ -121,28 +98,13 @@
     * Base experiments beans
     *************************************************************************-->
 
-    <bean id="experiment.flink-1.9.1" class="org.peelframework.flink.beans.experiment.FlinkExperiment" abstract="true">
-        <constructor-arg name="runner" ref="flink-yarn-1.9.1"/>
+    <bean id="experiment.flink-1.11.1" class="org.peelframework.flink.beans.experiment.FlinkExperiment" abstract="true">
+        <constructor-arg name="runner" ref="flink-yarn-1.11.1"/>
         <constructor-arg name="runs" value="3"/>
     </bean>
 
-    <bean id="experiment.flink-1.7.0" class="org.peelframework.flink.beans.experiment.FlinkExperiment" abstract="true">
-        <constructor-arg name="runner" ref="flink-yarn-1.7.0"/>
-        <constructor-arg name="runs" value="3"/>
-    </bean>
-
-    <bean id="experiment.flink-standalone-1.9.1" class="org.peelframework.flink.beans.experiment.FlinkExperiment" abstract="true">
-        <constructor-arg name="runner" ref="flink-1.9.1"/>
-        <constructor-arg name="runs" value="3"/>
-    </bean>
-
-    <bean id="experiment.e2data-flink-1.7.0" class="org.peelframework.flink.beans.experiment.FlinkExperiment" abstract="true">
-        <constructor-arg name="runner" ref="e2data-flink-yarn-1.7.0"/>
-        <constructor-arg name="runs" value="3"/>
-    </bean>
-
-    <bean id="experiment.flink-standalone-1.7.0" class="org.peelframework.flink.beans.experiment.FlinkExperiment" abstract="true">
-        <constructor-arg name="runner" ref="flink-1.7.0"/>
+    <bean id="experiment.flink-standalone-1.11.1" class="org.peelframework.flink.beans.experiment.FlinkExperiment" abstract="true">
+        <constructor-arg name="runner" ref="flink-1.11.1"/>
         <constructor-arg name="runs" value="3"/>
     </bean>
 

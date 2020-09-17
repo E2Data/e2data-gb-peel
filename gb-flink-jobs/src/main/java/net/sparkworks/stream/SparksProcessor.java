@@ -1,12 +1,12 @@
 package net.sparkworks.stream;
 
 import net.sparkworks.functions.STDOutliersRemovalWindowFunction;
-import net.sparkworks.functions.SensorDataAscendingTimestampExtractor;
 import net.sparkworks.functions.SummaryAggregateFunction;
 import net.sparkworks.functions.SummaryProcessWindowFunction;
 import net.sparkworks.model.SensorData;
 import net.sparkworks.model.SummaryResult;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -16,6 +16,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -75,7 +76,10 @@ public class SparksProcessor {
     
         DataStream<SensorData> sensorDataStream = rawStream
                 .map((MapFunction<String, SensorData>) line -> SensorData.fromCsvString(line))
-                .assignTimestampsAndWatermarks(new SensorDataAscendingTimestampExtractor());
+                .assignTimestampsAndWatermarks(WatermarkStrategy
+                        .<SensorData>forBoundedOutOfOrderness(Duration.ofMinutes(5))
+                        .withTimestampAssigner((event, timestamp) -> event.getTimestamp()));
+//                .assignTimestampsAndWatermarks(new SensorDataAscendingTimestampExtractor());
     
         final DataStream<SensorData> dataStreamOutliersΟmitted = sensorDataStream
                 // Group by device based on urn
