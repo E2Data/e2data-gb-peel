@@ -161,10 +161,19 @@
                                     <src>${basedir}/src/main/resources/datasets</src>
                                     <dst>${project.build.directory}/${project.parent.artifactId}/datasets</dst>
                                 </link>
+                                <!-- link datagens directory -->
+                                <link>
+                                    <src>${basedir}/src/main/resources/datagens</src>
+                                    <dst>${project.build.directory}/${project.parent.artifactId}/datagens</dst>
+                                </link>
                                 <!-- link utils directory  -->
                                 <link>
                                     <src>${basedir}/src/main/resources/utils</src>
                                     <dst>${project.build.directory}/${project.parent.artifactId}/utils</dst>
+                                </link>
+                                <link>
+                                    <src>${basedir}/src/main/resources/templates</src>
+                                    <dst>${project.build.directory}/${project.parent.artifactId}/templates</dst>
                                 </link>
                             </links>
                         </configuration>

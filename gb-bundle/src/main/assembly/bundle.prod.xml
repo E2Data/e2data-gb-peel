@@ -83,6 +83,12 @@
             <outputDirectory>datasets</outputDirectory>
             <fileMode>0644</fileMode>
         </fileSet>
+        <!-- copy datagens directory -->
+        <fileSet>
+            <directory>src/main/resources/datagens</directory>
+            <outputDirectory>datagens</outputDirectory>
+            <fileMode>0644</fileMode>
+        </fileSet>
         <!-- copy downloads directory -->
         <fileSet>
             <directory>src/main/resources/downloads</directory>
@@ -93,6 +99,12 @@
         <fileSet>
             <directory>src/main/resources/utils</directory>
             <outputDirectory>utils</outputDirectory>
+            <fileMode>0644</fileMode>
+        </fileSet>
+        <!-- copy templates directory  -->
+        <fileSet>
+            <directory>src/main/resources/templates</directory>
+            <outputDirectory>templates</outputDirectory>
             <fileMode>0644</fileMode>
         </fileSet>
 
