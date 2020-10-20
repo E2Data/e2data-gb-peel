@@ -15,7 +15,7 @@ class Extensions extends ApplicationContextAware {
   }
 
   @Bean(name = Array("pdu-0.0.1"))
-  def `pdu-0.0.1`: IccsPowerConsumption = new IccsPowerConsumption(
+  def `pdu-0.0.1`: PduPowerConsumption = new PduPowerConsumption(
     version      = "0.0.1",
     configKey    = "pdu",
     lifespan     = Lifespan.RUN,

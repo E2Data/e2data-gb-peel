@@ -43,7 +43,7 @@
     * Custom system beans
     *************************************************************************-->
 
-    <bean id="e2data-pdu-0.0.1" class="eu.e2data.benchmarks.cli.system.IccsPowerConsumption">
+    <bean id="e2data-pdu-0.0.1" class="eu.e2data.benchmarks.cli.system.PduPowerConsumption">
         <constructor-arg name="version" value="0.0.1" />
         <constructor-arg name="configKey" value="pdu" />
         <constructor-arg name="lifespan" value="RUN"/>
