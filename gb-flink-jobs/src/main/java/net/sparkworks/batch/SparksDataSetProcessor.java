@@ -5,14 +5,17 @@ import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.aggregation.Aggregations;
 import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.operators.UnsortedGrouping;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.util.Collector;
 
-import java.util.Calendar;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoField;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.DoubleStream;
@@ -21,19 +24,7 @@ public class SparksDataSetProcessor {
     
     public static void main(String[] args) throws Exception {
         
-        
         final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-        
-        // Setup the connection settings to the RabbitMQ broker
-/*
-        final RMQConnectionConfig connectionConfig = new RMQConnectionConfig.Builder()
-                .setHost(SparkConfiguration.brokerHost)
-                .setPort(SparkConfiguration.brokerPort)
-                .setUserName(SparkConfiguration.username)
-                .setPassword(SparkConfiguration.password)
-                .setVirtualHost(SparkConfiguration.brokerVHost)
-                .build();
-*/
         
         final String filename;
         Integer parallelism = null;
@@ -65,25 +56,21 @@ public class SparksDataSetProcessor {
         final DataSource<String> stringDataSource = env.readTextFile(filename);
         
         final UnsortedGrouping<Tuple3<String, Double, Long>> groupedDataSource = stringDataSource
-                .flatMap(new SparksSensorDataLineSplitter())
+                .map(new SparksSensorDataLineSplitterMapFunction())
                 .map(new TimestampMapFunction())
                 .groupBy(0, 2);
-        //.sortGroup(2, Order.ASCENDING);
-        //groupedDataSource
-        //        .aggregate(Aggregations.SUM, 1).andMax(1).andMin(1)
-        //        .print();
         
-        System.out.println("Min Reduction " +
-                groupedDataSource
-                        .reduceGroup(new MinGroupReduceFunction())
-                        .count());
-
-        long jobRuntime = env.getLastJobExecutionResult()
+        System.out.println("Min Reduction of Device, TimeWindow pairs #: " +
+                groupedDataSource.reduceGroup(new MinGroupReduceFunction()).count());
+    
+        long jobRuntime = env.getLastJobExecutionResult().getJobExecutionResult()
                              .getNetRuntime(TimeUnit.MILLISECONDS);
+        
         System.out.println(String.format("Min Reduction: %d ms", jobRuntime));
+        
         long totalRuntime = jobRuntime;
 
-        System.out.println("Max Reduction " +
+        System.out.println("Max Reduction of Device, TimeWindow pairs #: " +
                 groupedDataSource
                         .reduceGroup(new MaxGroupReduceFunction())
                         .count());
@@ -93,7 +80,7 @@ public class SparksDataSetProcessor {
         System.out.println(String.format("Max Reduction: %d ms", jobRuntime));
         totalRuntime += jobRuntime;
 
-        System.out.println("Sum Reduction " +
+        System.out.println("Sum Reduction of Device, TimeWindow pairs #: " +
                 groupedDataSource
                         .reduceGroup(new SumGroupReduceFunction())
                         .count());
@@ -103,7 +90,7 @@ public class SparksDataSetProcessor {
         System.out.println(String.format("Sum Reduction: %d ms", jobRuntime));
         totalRuntime += jobRuntime;
 
-        System.out.println("Average Reduction " +
+        System.out.println("Average Reduction of Device, TimeWindow pairs #: " +
                 groupedDataSource
                         .reduceGroup(new AverageGroupReduceFunction())
                         .count());
@@ -113,7 +100,7 @@ public class SparksDataSetProcessor {
         System.out.println(String.format("Average Reduction: %d ms", jobRuntime));
         totalRuntime += jobRuntime;
 
-        System.out.println("Outliers Detection Reduction " +
+        System.out.println("Outliers Detection Reduction of Device, TimeWindow pairs #: " +
                 groupedDataSource
                         .reduceGroup(new OutliersDetectionGroupReduceFunction()).count());
 
@@ -126,6 +113,19 @@ public class SparksDataSetProcessor {
 
         System.out.println(String.format("SparkWorks DataSet Window Processor Job took: %d ms with parallelism: %d",
                                          totalRuntime, env.getParallelism()));
+    }
+    
+    public static class SparksSensorDataLineSplitterMapFunction
+            implements MapFunction<String, Tuple3<String, Double, Long>> {
+        
+        @Override
+        public Tuple3<String, Double, Long> map(String line) {
+            String[] tokens = line.split("(,|;)\\s*");
+            if (tokens.length != 3) {
+                throw new IllegalStateException("Invalid record: " + line);
+            }
+            return new Tuple3<>(tokens[0], Double.parseDouble(tokens[2]), Long.parseLong(tokens[1]));
+        }
     }
     
     public static class SparksSensorDataLineSplitter implements FlatMapFunction<String, Tuple3<String, Double, Long>> {
@@ -161,15 +161,30 @@ public class SparksDataSetProcessor {
             this.windowMinutes = windowMinutes;
         }
         
-        public Tuple3<String, Double, Long> map(Tuple3<String, Double, Long> value) throws Exception {
-            Calendar local = Calendar.getInstance();
-            local.setTimeInMillis(value.getField(2));
-            local.set(Calendar.MILLISECOND, 0);
-            local.set(Calendar.SECOND, 0);
-            int minutes = local.get(Calendar.MINUTE) / getWindowMinutes();
-            local.set(Calendar.MINUTE, getWindowMinutes() * minutes);
-            value.setField(local.getTimeInMillis(), 2);
-            return value;
+        public Tuple3<String, Double, Long> map(Tuple3<String, Double, Long> value) {
+            LocalDateTime timestamp =
+                    LocalDateTime.ofInstant(Instant.ofEpochMilli(value.getField(2)),
+                            ZoneOffset.UTC).truncatedTo(ChronoUnit.MINUTES);
+            int minute = Math.floorDiv(timestamp.get(ChronoField.MINUTE_OF_HOUR), getWindowMinutes());
+            return new Tuple3<>(value.getField(0),
+                    value.getField(1),
+                    Long.valueOf(minute));
+    
+/*
+            return new Tuple3<>(value.getField(0),
+                    value.getField(1),
+                    Long.valueOf(new StringBuilder(timestamp.getYear())
+                            .append(timestamp.getMonthValue()).append(timestamp.getDayOfMonth())
+                            .append(timestamp.getHour()).append(minute).toString()));
+*/
+
+/*
+            timestamp.with(ChronoField.MINUTE_OF_HOUR, minute);
+            return new Tuple3<>(value.getField(0),
+                    value.getField(1),
+                    LocalDateTime.of(timestamp.getYear(), timestamp.getMonthValue(), timestamp.getDayOfMonth(),
+                            timestamp.getHour(), minute).toEpochSecond(ZoneOffset.UTC));
+*/
         }
     }
     
@@ -204,15 +219,22 @@ public class SparksDataSetProcessor {
     }
     
     public static class MinGroupReduceFunction implements
-            GroupReduceFunction<Tuple3<String, Double, Long>, Double> {
+            GroupReduceFunction<Tuple3<String, Double, Long>, Tuple3<String, Double, Long>> {
         
         @Override
-        public void reduce(Iterable<Tuple3<String, Double, Long>> values, Collector<Double> out) {
+        public void reduce(Iterable<Tuple3<String, Double, Long>> values,
+                           Collector<Tuple3<String, Double, Long>> out) {
             Double min = 0d;
+            String device = null;
+            Long timestampWindow = null;
             for (Tuple3<String, Double, Long> t : values) {
                 min = Math.min(min, t.getField(1));
+                device = t.getField(0);
+                timestampWindow = t.getField(2);
             }
-            out.collect(min);
+            Objects.requireNonNull(device);
+            Objects.requireNonNull(timestampWindow);
+            out.collect(new Tuple3<>(device, min, timestampWindow));
         }
         
     }

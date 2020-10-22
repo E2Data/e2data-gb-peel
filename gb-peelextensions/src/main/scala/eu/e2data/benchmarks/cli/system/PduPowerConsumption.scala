@@ -20,7 +20,7 @@ class PduPowerConsumption(
 
   def enabled = config.getBoolean("system.pdu.enabled")
 
-  def cluster = config.getBoolean("system.pdu.cluster")
+  def cluster = config.getString("system.pdu.cluster")
 
   var pid = 0;
 

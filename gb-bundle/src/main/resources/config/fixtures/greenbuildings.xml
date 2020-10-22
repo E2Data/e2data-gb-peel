@@ -10,7 +10,7 @@
     *************************************************************************-->
 
     <!-- experiment with fixed dataset -->
-    <bean id="experiment.gb" parent="experiment.flink-1.11.1" abstract="true">
+    <bean id="experiment.gb" parent="experiment.flink-yarn-1.11.1" abstract="true">
         <constructor-arg name="command">
             <value><![CDATA[
               -v -c net.sparkworks.batch.SparksDataSetProcessor  \
@@ -31,7 +31,7 @@
         <constructor-arg name="config" value=""/>
     </bean>
 
-    <bean id="experiment.gb.60" parent="experiment.flink-1.11.1" abstract="true">
+    <bean id="experiment.gb.60" parent="experiment.flink-yarn-1.11.1" abstract="true">
         <constructor-arg name="command">
             <value><![CDATA[
               -v -c net.sparkworks.batch.SparksDataSetProcessor  \
