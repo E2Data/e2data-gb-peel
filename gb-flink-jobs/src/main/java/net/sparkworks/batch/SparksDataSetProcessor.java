@@ -70,6 +70,7 @@ public class SparksDataSetProcessor {
         
         long totalRuntime = jobRuntime;
 
+/*
         System.out.println("Max Reduction of Device, TimeWindow pairs #: " +
                 groupedDataSource
                         .reduceGroup(new MaxGroupReduceFunction())
@@ -110,6 +111,7 @@ public class SparksDataSetProcessor {
         totalRuntime += jobRuntime;
 
         //        final JobExecutionResult jobExecutionResult = env.execute("SparkWorks DataSet Window Processor");
+*/
 
         System.out.println(String.format("SparkWorks DataSet Window Processor Job took: %d ms with parallelism: %d",
                                          totalRuntime, env.getParallelism()));
@@ -145,12 +147,12 @@ public class SparksDataSetProcessor {
     public static class TimestampMapFunction implements
             MapFunction<Tuple3<String, Double, Long>, Tuple3<String, Double, Long>> {
         
-        public final int DEFAULTWINDOWMINUTES = 5;
+        public final int DEFAULT_WINDOW_MINUTES = 5;
         
         public int windowMinutes;
         
         public TimestampMapFunction() {
-            this.windowMinutes = DEFAULTWINDOWMINUTES;
+            this.windowMinutes = DEFAULT_WINDOW_MINUTES;
         }
         
         public int getWindowMinutes() {
@@ -166,25 +168,10 @@ public class SparksDataSetProcessor {
                     LocalDateTime.ofInstant(Instant.ofEpochMilli(value.getField(2)),
                             ZoneOffset.UTC).truncatedTo(ChronoUnit.MINUTES);
             int minute = Math.floorDiv(timestamp.get(ChronoField.MINUTE_OF_HOUR), getWindowMinutes());
-            return new Tuple3<>(value.getField(0),
-                    value.getField(1),
-                    Long.valueOf(minute));
-    
-/*
-            return new Tuple3<>(value.getField(0),
-                    value.getField(1),
-                    Long.valueOf(new StringBuilder(timestamp.getYear())
-                            .append(timestamp.getMonthValue()).append(timestamp.getDayOfMonth())
-                            .append(timestamp.getHour()).append(minute).toString()));
-*/
-
-/*
             timestamp.with(ChronoField.MINUTE_OF_HOUR, minute);
             return new Tuple3<>(value.getField(0),
                     value.getField(1),
-                    LocalDateTime.of(timestamp.getYear(), timestamp.getMonthValue(), timestamp.getDayOfMonth(),
-                            timestamp.getHour(), minute).toEpochSecond(ZoneOffset.UTC));
-*/
+                    timestamp.toInstant(ZoneOffset.UTC).toEpochMilli());
         }
     }
     
