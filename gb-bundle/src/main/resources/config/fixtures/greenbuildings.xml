@@ -15,7 +15,8 @@
             <value><![CDATA[
               -v -c net.sparkworks.batch.SparksDataSetProcessor  \
               ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
-              --filename ${system.hadoop-3.path.input}/dataset_2000_1_5
+              --filename ${system.hadoop-3.path.input}/dataset_2000_1_5 \
+              --output ${system.hadoop-3.path.output}
             ]]></value>
         </constructor-arg>
         <constructor-arg name="inputs">
@@ -36,7 +37,8 @@
             <value><![CDATA[
               -v -c net.sparkworks.batch.SparksDataSetProcessor  \
               ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
-              --filename ${system.hadoop-3.path.input}/dataset_2000_1_60
+              --filename ${system.hadoop-3.path.input}/dataset_2000_1_60 \
+              --output ${system.hadoop-3.path.output}
             ]]></value>
         </constructor-arg>
         <constructor-arg name="inputs">
@@ -46,7 +48,7 @@
         </constructor-arg>
         <constructor-arg name="outputs">
             <set value-type="org.peelframework.core.beans.data.ExperimentOutput">
-                <ref bean="gb.output.60"/>
+                <ref bean="gb.output"/>
             </set>
         </constructor-arg>
         <constructor-arg name="config" value=""/>
@@ -74,11 +76,6 @@
 
     <bean id="gb.output" class="org.peelframework.core.beans.data.ExperimentOutput">
         <constructor-arg name="path" value="${system.hadoop-3.path.output}/"/>
-        <constructor-arg name="fs" ref="hdfs-3.1.1"/>
-    </bean>
-
-    <bean id="gb.output.60" class="org.peelframework.core.beans.data.ExperimentOutput">
-        <constructor-arg name="path" value="${system.hadoop-3.path.output}/2000_1_60/"/>
         <constructor-arg name="fs" ref="hdfs-3.1.1"/>
     </bean>
 

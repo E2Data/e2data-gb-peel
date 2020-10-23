@@ -1,6 +1,7 @@
 package net.sparkworks.batch;
 
 import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
+import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -27,6 +28,7 @@ public class SparksDataSetProcessor {
         final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
         
         final String filename;
+        final String output;
         Integer parallelism = null;
         try {
             // access the arguments of the command line tool
@@ -38,7 +40,15 @@ public class SparksDataSetProcessor {
             } else {
                 filename = params.get("filename");
             }
-            
+    
+            if (!params.has("output")) {
+                output = "/tmp";
+                System.err.println("No output filename specified. Please run 'WindowProcessor " +
+                        "--output <filename>, where filename is the name of the dataset in CSV format");
+            } else {
+                output = params.get("output");
+            }
+    
             if (params.has("parallelism")) {
                 parallelism = params.getInt("parallelism");
             }
@@ -60,6 +70,11 @@ public class SparksDataSetProcessor {
                 .map(new TimestampMapFunction())
                 .groupBy(0, 2);
         
+        groupedDataSource
+                .reduceGroup(new MinGroupReduceFunction())
+                .writeAsCsv(output + "/min.csv");
+        
+/*
         System.out.println("Min Reduction of Device, TimeWindow pairs #: " +
                 groupedDataSource.reduceGroup(new MinGroupReduceFunction()).count());
     
@@ -69,52 +84,82 @@ public class SparksDataSetProcessor {
         System.out.println(String.format("Min Reduction: %d ms", jobRuntime));
         
         long totalRuntime = jobRuntime;
-
+*/
+    
+        groupedDataSource
+                .reduceGroup(new MaxGroupReduceFunction())
+                .writeAsCsv(output + "/max.csv");
+    
 /*
         System.out.println("Max Reduction of Device, TimeWindow pairs #: " +
                 groupedDataSource
                         .reduceGroup(new MaxGroupReduceFunction())
                         .count());
+*/
 
+/*
         jobRuntime = env.getLastJobExecutionResult()
                              .getNetRuntime(TimeUnit.MILLISECONDS);
         System.out.println(String.format("Max Reduction: %d ms", jobRuntime));
         totalRuntime += jobRuntime;
-
+*/
+    
+        groupedDataSource
+                .reduceGroup(new SumGroupReduceFunction())
+                .writeAsCsv(output + "/sum.csv");
+/*
         System.out.println("Sum Reduction of Device, TimeWindow pairs #: " +
                 groupedDataSource
                         .reduceGroup(new SumGroupReduceFunction())
                         .count());
+*/
 
+/*
         jobRuntime = env.getLastJobExecutionResult()
                         .getNetRuntime(TimeUnit.MILLISECONDS);
         System.out.println(String.format("Sum Reduction: %d ms", jobRuntime));
         totalRuntime += jobRuntime;
-
+*/
+    
+        groupedDataSource
+                .reduceGroup(new AverageGroupReduceFunction())
+                .writeAsCsv(output + "/avg.csv");
+    
+/*
         System.out.println("Average Reduction of Device, TimeWindow pairs #: " +
                 groupedDataSource
                         .reduceGroup(new AverageGroupReduceFunction())
                         .count());
+*/
 
+/*
         jobRuntime = env.getLastJobExecutionResult()
                         .getNetRuntime(TimeUnit.MILLISECONDS);
         System.out.println(String.format("Average Reduction: %d ms", jobRuntime));
         totalRuntime += jobRuntime;
-
+*/
+    
+        groupedDataSource
+                .reduceGroup(new OutliersDetectionGroupReduceFunction())
+                .writeAsCsv(output + "/outliers.csv");
+    
+/*
         System.out.println("Outliers Detection Reduction of Device, TimeWindow pairs #: " +
                 groupedDataSource
                         .reduceGroup(new OutliersDetectionGroupReduceFunction()).count());
+*/
 
+/*
         jobRuntime = env.getLastJobExecutionResult()
                         .getNetRuntime(TimeUnit.MILLISECONDS);
         System.out.println(String.format("Outliers Detection Reduction: %d ms", jobRuntime));
         totalRuntime += jobRuntime;
-
-        //        final JobExecutionResult jobExecutionResult = env.execute("SparkWorks DataSet Window Processor");
 */
 
+        final JobExecutionResult jobExecutionResult = env.execute("SparkWorks DataSet Window Processor");
+
         System.out.println(String.format("SparkWorks DataSet Window Processor Job took: %d ms with parallelism: %d",
-                                         totalRuntime, env.getParallelism()));
+                                         jobExecutionResult.getNetRuntime(TimeUnit.MILLISECONDS), env.getParallelism()));
     }
     
     public static class SparksSensorDataLineSplitterMapFunction
@@ -171,36 +216,54 @@ public class SparksDataSetProcessor {
             timestamp.with(ChronoField.MINUTE_OF_HOUR, minute);
             return new Tuple3<>(value.getField(0),
                     value.getField(1),
+                    Long.valueOf(minute));
+    
+/*
+            return new Tuple3<>(value.getField(0),
+                    value.getField(1),
                     timestamp.toInstant(ZoneOffset.UTC).toEpochMilli());
+*/
         }
     }
     
     public static class SumGroupReduceFunction implements
-            GroupReduceFunction<Tuple3<String, Double, Long>, Double> {
+            GroupReduceFunction<Tuple3<String, Double, Long>, Tuple3<String, Double, Long>> {
         
         @Override
-        public void reduce(Iterable<Tuple3<String, Double, Long>> values, Collector<Double> out) {
+        public void reduce(Iterable<Tuple3<String, Double, Long>> values, Collector<Tuple3<String, Double, Long>> out) {
             Double sum = 0d;
+            String device = null;
+            Long timestampWindow = null;
             for (Tuple3<String, Double, Long> t : values) {
                 sum += (Double) t.getField(1);
+                device = t.getField(0);
+                timestampWindow = t.getField(2);
             }
-            out.collect(sum);
+            Objects.requireNonNull(device);
+            Objects.requireNonNull(timestampWindow);
+            out.collect(new Tuple3<>(device, sum, timestampWindow));
         }
         
     }
     
     public static class AverageGroupReduceFunction implements
-            GroupReduceFunction<Tuple3<String, Double, Long>, Double> {
+            GroupReduceFunction<Tuple3<String, Double, Long>, Tuple3<String, Double, Long>> {
         
         @Override
-        public void reduce(Iterable<Tuple3<String, Double, Long>> values, Collector<Double> out) {
+        public void reduce(Iterable<Tuple3<String, Double, Long>> values, Collector<Tuple3<String, Double, Long>> out) {
             Double sum = 0d;
             long lenght = 0;
+            String device = null;
+            Long timestampWindow = null;
             for (Tuple3<String, Double, Long> t : values) {
                 sum += (Double) t.getField(1);
                 lenght++;
+                device = t.getField(0);
+                timestampWindow = t.getField(2);
             }
-            out.collect(sum / lenght);
+            Objects.requireNonNull(device);
+            Objects.requireNonNull(timestampWindow);
+            out.collect(new Tuple3<>(device, sum / lenght, timestampWindow));
         }
         
     }
@@ -227,36 +290,52 @@ public class SparksDataSetProcessor {
     }
     
     public static class MaxGroupReduceFunction implements
-            GroupReduceFunction<Tuple3<String, Double, Long>, Double> {
+            GroupReduceFunction<Tuple3<String, Double, Long>, Tuple3<String, Double, Long>> {
         
         @Override
-        public void reduce(Iterable<Tuple3<String, Double, Long>> values, Collector<Double> out) {
+        public void reduce(Iterable<Tuple3<String, Double, Long>> values, Collector<Tuple3<String, Double, Long>> out) {
             Double max = 0d;
+            String device = null;
+            Long timestampWindow = null;
             for (Tuple3<String, Double, Long> t : values) {
                 max = Math.max(max, t.getField(1));
+                device = t.getField(0);
+                timestampWindow = t.getField(2);
             }
-            out.collect(max);
+            Objects.requireNonNull(device);
+            Objects.requireNonNull(timestampWindow);
+            out.collect(new Tuple3<>(device, max, timestampWindow));
         }
         
     }
     
     public static class OutliersDetectionGroupReduceFunction implements
-            GroupReduceFunction<Tuple3<String, Double, Long>, Double> {
+            GroupReduceFunction<Tuple3<String, Double, Long>, Tuple3<String, Double, Long>> {
         
         @Override
-        public void reduce(Iterable<Tuple3<String, Double, Long>> values, Collector<Double> out) {
+        public void reduce(Iterable<Tuple3<String, Double, Long>> values, Collector<Tuple3<String, Double, Long>> out) {
             DescriptiveStatistics descriptiveStatistics = new DescriptiveStatistics();
+            String device = null;
+            Long timestampWindow = null;
             for (Tuple3<String, Double, Long> sensorData : values) {
                 descriptiveStatistics.addValue(sensorData.getField(1));
+                device = sensorData.getField(0);
+                timestampWindow = sensorData.getField(2);
             }
             double std = descriptiveStatistics.getStandardDeviation();
             double lowerThreshold = descriptiveStatistics.getMean() - 2 * std;
             double upperThreshold = descriptiveStatistics.getMean() + 2 * std;
+    
+            Objects.requireNonNull(device);
+            Objects.requireNonNull(timestampWindow);
+    
+            String finalDevice = device;
+            Long finalTimestampWindow = timestampWindow;
             
             DoubleStream.of(descriptiveStatistics.getValues()).boxed().forEach(sd -> {
                 if (sd < lowerThreshold || sd > upperThreshold) {
                     System.out.println(String.format("Detected Outlier value: %s.", sd));
-                    out.collect(sd);
+                    out.collect(new Tuple3<>(finalDevice, sd, finalTimestampWindow));
                 }
             });
             
