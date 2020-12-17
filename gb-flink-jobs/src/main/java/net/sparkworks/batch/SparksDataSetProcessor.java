@@ -1,6 +1,6 @@
 package net.sparkworks.batch;
 
-import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
@@ -8,7 +8,7 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
-import org.apache.flink.api.java.operators.MapOperator;
+import org.apache.flink.api.java.operators.UnsortedGrouping;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -28,12 +28,15 @@ import java.util.stream.DoubleStream;
 
 public class SparksDataSetProcessor {
 
+    /**
+     * If this flag is True, then the GroupBy operations is resolved in the client. This is only for testing.
+     */
     private static final boolean MANUAL_GROUP_BY = false;
 
     public static void main(String[] args) throws Exception {
-        
+
         final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-        
+
         final String filename;
         final String output;
         Integer parallelism = null;
@@ -47,7 +50,7 @@ public class SparksDataSetProcessor {
             } else {
                 filename = params.get("filename");
             }
-    
+
             if (!params.has("output")) {
                 output = "/tmp";
                 System.err.println("No output filename specified. Please run 'WindowProcessor " +
@@ -55,42 +58,40 @@ public class SparksDataSetProcessor {
             } else {
                 output = params.get("output");
             }
-    
+
             if (params.has("parallelism")) {
                 parallelism = params.getInt("parallelism");
             }
-            
+
         } catch (Exception ex) {
             System.err.println("No filename specified. Please run 'WindowProcessor " +
                     "--filename <filename>, where filename is the name of the dataset in CSV format");
             return;
         }
-        
+
         if (Objects.nonNull(parallelism)) {
             env.setParallelism(parallelism);
         }
-        
+
         final DataSource<String> stringDataSource = env.readTextFile(filename);
 
-        System.setProperty("tornado", "False");
-        final MapOperator<Tuple3<Long, Double, Long>, Tuple4<Long, Double, Long, Long>> groupedDataSource =
+        System.setProperty("tornado", "false");
+        final UnsortedGrouping<Tuple4<Long, Double, Long, Long>> groupedDataSource =
                 stringDataSource
-                .map(new SparksSensorDataLineSplitterMapFunction())
-                .map(new TimestampMapFunction())
+                        .map(new SparksSensorDataLineSplitterMapFunction())
+                        .map(new TimestampMapFunction())
                         .map(new MapFunction<Tuple3<Long, Double, Long>, Tuple4<Long, Double, Long, Long>>() {
                             @Override
                             public Tuple4<Long, Double, Long, Long> map(Tuple3<Long, Double, Long> value) {
                                 return new Tuple4<>(value.f0, value.f1, value.f2, 1L);
                             }
-               });
+                        }).groupBy(0, 2);
 
-        List<Tuple4<Long, Double, Long, Long>> collect1 = groupedDataSource.groupBy(0, 2).first(Integer.MAX_VALUE).collect();
-        DataSource<Tuple4<Long, Double, Long, Long>> tuple4DataSource = env.fromCollection(collect1);
 
         if (MANUAL_GROUP_BY) {
-            System.out.println("Processing new lists");
+            List<Tuple4<Long, Double, Long, Long>> collect1 = groupedDataSource.first(Integer.MAX_VALUE).collect();
+
             ArrayList<ArrayList<Tuple4<Long, Double, Long, Long>>> allLists = splitCollectionGroup(0, collect1);
-            List<Tuple4<Long, Double, Long, Long>> tuple4s = allLists.get(0);
             ArrayList<ArrayList<Tuple4<Long, Double, Long, Long>>> newList = new ArrayList<>();
             for (ArrayList<Tuple4<Long, Double, Long, Long>> allList : allLists) {
                 ArrayList<ArrayList<Tuple4<Long, Double, Long, Long>>> lists1 = splitCollectionGroup(2, allList);
@@ -102,8 +103,8 @@ public class SparksDataSetProcessor {
 
             for (ArrayList<Tuple4<Long, Double, Long, Long>> groupData : newList) {
                 DataSource<Tuple4<Long, Double, Long, Long>> datasource = env.fromCollection(groupData);
-                System.setProperty("tornado", "True");
-                tuple4DataSource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+                System.setProperty("tornado", "true");
+                datasource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
                     @Override
                     public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
                                                                    Tuple4<Long, Double, Long, Long> t2) {
@@ -139,15 +140,17 @@ public class SparksDataSetProcessor {
                 datasource
                         .reduceGroup(new OutliersDetectionGroupReduceFunction())
                         .writeAsCsv(output + "/outliers.csv", FileSystem.WriteMode.OVERWRITE);
+
             }
             final JobExecutionResult jobExecutionResult = env.execute("SparkWorks DataSet Window Processor");
 
             System.out.println(String.format("SparkWorks DataSet Window Processor Job took: %d ms with parallelism: %d",
                     jobExecutionResult.getNetRuntime(TimeUnit.MILLISECONDS), env.getParallelism()));
+
         } else {
 
             System.setProperty("tornado", "True");
-            groupedDataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+            groupedDataSource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
                 @Override
                 public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
                                                                Tuple4<Long, Double, Long, Long> t2) {
@@ -155,7 +158,7 @@ public class SparksDataSetProcessor {
                 }
             }).writeAsCsv(output + "/min.csv", FileSystem.WriteMode.OVERWRITE);
 
-            groupedDataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+            groupedDataSource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
                 @Override
                 public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
                                                                Tuple4<Long, Double, Long, Long> t2) {
@@ -163,7 +166,7 @@ public class SparksDataSetProcessor {
                 }
             }).writeAsCsv(output + "/max.csv", FileSystem.WriteMode.OVERWRITE);
 
-            groupedDataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+            groupedDataSource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
                 @Override
                 public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
                                                                Tuple4<Long, Double, Long, Long> t2) {
@@ -171,7 +174,7 @@ public class SparksDataSetProcessor {
                 }
             }).writeAsCsv(output + "/sum.csv", FileSystem.WriteMode.OVERWRITE);
 
-            groupedDataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+            groupedDataSource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
                 @Override
                 public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
                                                                Tuple4<Long, Double, Long, Long> t2) {
@@ -181,7 +184,6 @@ public class SparksDataSetProcessor {
 
             System.setProperty("tornado", "False");
             groupedDataSource
-                    .groupBy(0, 2)
                     .reduceGroup(new OutliersDetectionGroupReduceFunction())
                     .writeAsCsv(output + "/outliers.csv", FileSystem.WriteMode.OVERWRITE);
 
@@ -215,7 +217,7 @@ public class SparksDataSetProcessor {
     }
 
     public static class SparksSensorDataLineSplitterMapFunction implements MapFunction<String, Tuple3<Long, Double, Long>>{
-        
+
         @Override
         public Tuple3<Long, Double, Long> map(String line) {
             String[] tokens = line.split("(,|;)\\s*");
@@ -228,7 +230,7 @@ public class SparksDataSetProcessor {
                     Double.parseDouble(tokens[2]),
                     Long.parseLong(tokens[1]));
         }
-    
+
         public static Long getNumericReferenceNumber(String str) {
             String result = "";
             for (int i = 0; i < str.length(); i++) {
@@ -243,39 +245,39 @@ public class SparksDataSetProcessor {
             return Long.parseLong(result);
         }
     }
-    
+
     public static class SparksSensorDataLineSplitter implements FlatMapFunction<String, Tuple3<String, Double, Long>> {
-        
+
         @Override
         public void flatMap(String line, Collector<Tuple3<String, Double, Long>> out) {
-            
+
             String[] tokens = line.split("(,|;)\\s*");
             if (tokens.length != 3) {
                 throw new IllegalStateException("Invalid record: " + line);
             }
             out.collect(new Tuple3<>(tokens[0], Double.parseDouble(tokens[2]), Long.parseLong(tokens[1])));
         }
-        
+
     }
-    
+
     public static class TimestampMapFunction implements MapFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
-        
+
         public final int DEFAULT_WINDOW_MINUTES = 5;
-        
+
         public int windowMinutes;
-        
+
         public TimestampMapFunction() {
             this.windowMinutes = DEFAULT_WINDOW_MINUTES;
         }
-        
+
         public int getWindowMinutes() {
             return windowMinutes;
         }
-        
+
         public void setWindowMinutes(final int windowMinutes) {
             this.windowMinutes = windowMinutes;
         }
-        
+
         public Tuple3<Long, Double, Long> map(Tuple3<Long, Double, Long> value) {
             LocalDateTime timestamp =
                     LocalDateTime.ofInstant(Instant.ofEpochMilli(value.getField(2)),
@@ -285,7 +287,7 @@ public class SparksDataSetProcessor {
             return new Tuple3<>(value.getField(0),
                     value.getField(1),
                     Long.valueOf(minute));
-    
+
 /*
             return new Tuple3<>(value.getField(0),
                     value.getField(1),
@@ -293,9 +295,9 @@ public class SparksDataSetProcessor {
 */
         }
     }
-    
+
     public static class SumGroupReduceFunction implements GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
-        
+
         @Override
         public void reduce(Iterable<Tuple3<Long, Double, Long>> values, Collector<Tuple3<Long, Double, Long>> out) {
             Double sum = 0d;
@@ -310,11 +312,11 @@ public class SparksDataSetProcessor {
             Objects.requireNonNull(timestampWindow);
             out.collect(new Tuple3<>(device, sum, timestampWindow));
         }
-        
+
     }
-    
+
     public static class AverageGroupReduceFunction implements GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
-        
+
         @Override
         public void reduce(Iterable<Tuple3<Long, Double, Long>> values, Collector<Tuple3<Long, Double, Long>> out) {
             Double sum = 0d;
@@ -331,11 +333,11 @@ public class SparksDataSetProcessor {
             Objects.requireNonNull(timestampWindow);
             out.collect(new Tuple3<>(device, sum / length, timestampWindow));
         }
-        
+
     }
-    
+
     public static class MinGroupReduceFunction implements GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
-        
+
         @Override
         public void reduce(Iterable<Tuple3<Long, Double, Long>> values,
                            Collector<Tuple3<Long, Double, Long>> out) {
@@ -351,11 +353,11 @@ public class SparksDataSetProcessor {
             Objects.requireNonNull(timestampWindow);
             out.collect(new Tuple3<>(device, min, timestampWindow));
         }
-        
+
     }
-    
+
     public static class MaxGroupReduceFunction implements GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
-        
+
         @Override
         public void reduce(Iterable<Tuple3<Long, Double, Long>> values, Collector<Tuple3<Long, Double, Long>> out) {
             Double max = 0d;
@@ -370,11 +372,11 @@ public class SparksDataSetProcessor {
             Objects.requireNonNull(timestampWindow);
             out.collect(new Tuple3<>(device, max, timestampWindow));
         }
-        
+
     }
-    
+
     public static class OutliersDetectionGroupReduceFunction implements GroupReduceFunction<Tuple4<Long, Double, Long, Long>, Tuple3<Long, Double, Long>> {
-        
+
         @Override
         public void reduce(Iterable<Tuple4<Long, Double, Long, Long>> values, Collector<Tuple3<Long, Double, Long>> out) {
             DescriptiveStatistics descriptiveStatistics = new DescriptiveStatistics();
@@ -388,16 +390,16 @@ public class SparksDataSetProcessor {
             double std = descriptiveStatistics.getStandardDeviation();
             double lowerThreshold = descriptiveStatistics.getMean() - 2 * std;
             double upperThreshold = descriptiveStatistics.getMean() + 2 * std;
-    
+
             Objects.requireNonNull(device);
             Objects.requireNonNull(timestampWindow);
-    
+
             Long finalDevice = device;
             Long finalTimestampWindow = timestampWindow;
-            
+
             DoubleStream.of(descriptiveStatistics.getValues()).boxed().forEach(sd -> {
                 if (sd < lowerThreshold || sd > upperThreshold) {
-                    System.out.println(String.format("Detected Outlier value: %s.", sd));
+                    //System.out.println(String.format("Detected Outlier value: %s.", sd));
                     out.collect(new Tuple3<>(finalDevice, sd, finalTimestampWindow));
                 }
             });
