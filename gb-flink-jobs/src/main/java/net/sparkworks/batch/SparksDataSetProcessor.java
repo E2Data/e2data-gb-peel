@@ -85,9 +85,6 @@ public class SparksDataSetProcessor {
                });
 
         List<Tuple4<Long, Double, Long, Long>> collect1 = groupedDataSource.groupBy(0, 2).first(Integer.MAX_VALUE).collect();
-        int size = collect1.size();
-        System.out.println("SIZE: " + size);
-        //List<Tuple4<Long, Double, Long, Long>> collect = groupedDataSource.collect();
         DataSource<Tuple4<Long, Double, Long, Long>> tuple4DataSource = env.fromCollection(collect1);
 
         if (MANUAL_GROUP_BY) {
