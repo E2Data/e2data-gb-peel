@@ -150,7 +150,7 @@ public class SparksDataSetProcessor {
         } else {
 
             System.setProperty("tornado", "True");
-            tuple4DataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+            groupedDataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
                 @Override
                 public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
                                                                Tuple4<Long, Double, Long, Long> t2) {
@@ -158,7 +158,7 @@ public class SparksDataSetProcessor {
                 }
             }).writeAsCsv(output + "/min.csv", FileSystem.WriteMode.OVERWRITE);
 
-            tuple4DataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+            groupedDataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
                 @Override
                 public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
                                                                Tuple4<Long, Double, Long, Long> t2) {
@@ -166,7 +166,7 @@ public class SparksDataSetProcessor {
                 }
             }).writeAsCsv(output + "/max.csv", FileSystem.WriteMode.OVERWRITE);
 
-            tuple4DataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+            groupedDataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
                 @Override
                 public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
                                                                Tuple4<Long, Double, Long, Long> t2) {
@@ -174,7 +174,7 @@ public class SparksDataSetProcessor {
                 }
             }).writeAsCsv(output + "/sum.csv", FileSystem.WriteMode.OVERWRITE);
 
-            tuple4DataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+            groupedDataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
                 @Override
                 public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
                                                                Tuple4<Long, Double, Long, Long> t2) {
@@ -183,7 +183,7 @@ public class SparksDataSetProcessor {
             }).writeAsCsv(output + "/avg.csv", FileSystem.WriteMode.OVERWRITE);
 
             System.setProperty("tornado", "False");
-            tuple4DataSource
+            groupedDataSource
                     .groupBy(0, 2)
                     .reduceGroup(new OutliersDetectionGroupReduceFunction())
                     .writeAsCsv(output + "/outliers.csv", FileSystem.WriteMode.OVERWRITE);
