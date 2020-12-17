@@ -8,7 +8,7 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
-import org.apache.flink.api.java.operators.UnsortedGrouping;
+import org.apache.flink.api.java.operators.MapOperator;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -20,12 +20,16 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.DoubleStream;
 
 public class SparksDataSetProcessor {
-    
+
+    private static final boolean MANUAL_GROUP_BY = false;
+
     public static void main(String[] args) throws Exception {
         
         final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
@@ -67,8 +71,9 @@ public class SparksDataSetProcessor {
         }
         
         final DataSource<String> stringDataSource = env.readTextFile(filename);
-        
-        final UnsortedGrouping<Tuple4<Long, Double, Long, Long>> groupedDataSource =
+
+        System.setProperty("tornado", "False");
+        final MapOperator<Tuple3<Long, Double, Long>, Tuple4<Long, Double, Long, Long>> groupedDataSource =
                 stringDataSource
                 .map(new SparksSensorDataLineSplitterMapFunction())
                 .map(new TimestampMapFunction())
@@ -77,72 +82,142 @@ public class SparksDataSetProcessor {
                             public Tuple4<Long, Double, Long, Long> map(Tuple3<Long, Double, Long> value) {
                                 return new Tuple4<>(value.f0, value.f1, value.f2, 1L);
                             }
-                        })
-                .groupBy(0, 2);
-    
-    
-        groupedDataSource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
-            @Override
-            public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
-                                                           Tuple4<Long, Double, Long, Long> t2) {
-                return new Tuple4<>(t1.f0, Math.min(t1.f1, t2.f1), t1.f2, t1.f3 + 1);
-            }
-        }).writeAsCsv(output + "/min.csv", FileSystem.WriteMode.OVERWRITE);
-    
-        groupedDataSource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
-            @Override
-            public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
-                                                           Tuple4<Long, Double, Long, Long> t2) {
-                return new Tuple4<>(t1.f0, Math.max(t1.f1, t2.f1), t1.f2, t1.f3 + 1);
-            }
-        }).writeAsCsv(output + "/max.csv", FileSystem.WriteMode.OVERWRITE);
-    
-        groupedDataSource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
-            @Override
-            public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
-                                                           Tuple4<Long, Double, Long, Long> t2) {
-                return new Tuple4<>(t1.f0, t1.f1 + t2.f1, t1.f2, t1.f3 + 1);
-            }
-        }).writeAsCsv(output + "/sum.csv", FileSystem.WriteMode.OVERWRITE);
-    
-    
-        groupedDataSource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
-            @Override
-            public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
-                                                           Tuple4<Long, Double, Long, Long> t2) {
-                return new Tuple4<>(t1.f0, (t1.f1 * t1.f3 + t2.f1 * t2.f3) / (t1.f3 + t2.f3), t1.f2, t1.f3 + t2.f3);
-            }
-        }).writeAsCsv(output + "/avg.csv", FileSystem.WriteMode.OVERWRITE);
-        
-        
-/*
-        groupedDataSource
-                .min(1)
-                .writeAsCsv(output + "/min.csv", FileSystem.WriteMode.OVERWRITE);
-        groupedDataSource
-                .max(1)
-                .writeAsCsv(output + "/max.csv", FileSystem.WriteMode.OVERWRITE);
-        groupedDataSource
-                //.aggregate(Aggregations.SUM, 1)
-                .sum(1)
-                .writeAsCsv(output + "/sum.csv", FileSystem.WriteMode.OVERWRITE);
-        groupedDataSource
-                .aggregate(new AverageAggregate())
-                .writeAsCsv(output + "/avg.csv", FileSystem.WriteMode.OVERWRITE);
-*/
-        
-        groupedDataSource
-                .reduceGroup(new OutliersDetectionGroupReduceFunction())
-                .writeAsCsv(output + "/outliers.csv", FileSystem.WriteMode.OVERWRITE);
-        
-        final JobExecutionResult jobExecutionResult = env.execute("SparkWorks DataSet Window Processor");
+               });
 
-        System.out.println(String.format("SparkWorks DataSet Window Processor Job took: %d ms with parallelism: %d",
-                                         jobExecutionResult.getNetRuntime(TimeUnit.MILLISECONDS), env.getParallelism()));
+        List<Tuple4<Long, Double, Long, Long>> collect1 = groupedDataSource.groupBy(0, 2).first(Integer.MAX_VALUE).collect();
+        int size = collect1.size();
+        System.out.println("SIZE: " + size);
+        //List<Tuple4<Long, Double, Long, Long>> collect = groupedDataSource.collect();
+        DataSource<Tuple4<Long, Double, Long, Long>> tuple4DataSource = env.fromCollection(collect1);
+
+        if (MANUAL_GROUP_BY) {
+            System.out.println("Processing new lists");
+            ArrayList<ArrayList<Tuple4<Long, Double, Long, Long>>> allLists = splitCollectionGroup(0, collect1);
+            List<Tuple4<Long, Double, Long, Long>> tuple4s = allLists.get(0);
+            ArrayList<ArrayList<Tuple4<Long, Double, Long, Long>>> newList = new ArrayList<>();
+            for (ArrayList<Tuple4<Long, Double, Long, Long>> allList : allLists) {
+                ArrayList<ArrayList<Tuple4<Long, Double, Long, Long>>> lists1 = splitCollectionGroup(2, allList);
+                newList.addAll(lists1);
+            }
+            allLists.clear();
+            allLists = null;
+            System.gc();
+
+            for (ArrayList<Tuple4<Long, Double, Long, Long>> groupData : newList) {
+                DataSource<Tuple4<Long, Double, Long, Long>> datasource = env.fromCollection(groupData);
+                System.setProperty("tornado", "True");
+                tuple4DataSource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+                    @Override
+                    public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                                   Tuple4<Long, Double, Long, Long> t2) {
+                        return new Tuple4<>(t1.f0, Math.min(t1.f1, t2.f1), t1.f2, t1.f3 + 1);
+                    }
+                }).writeAsCsv(output + "/min.csv", FileSystem.WriteMode.OVERWRITE);
+
+                datasource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+                    @Override
+                    public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                                   Tuple4<Long, Double, Long, Long> t2) {
+                        return new Tuple4<>(t1.f0, Math.max(t1.f1, t2.f1), t1.f2, t1.f3 + 1);
+                    }
+                }).writeAsCsv(output + "/max.csv", FileSystem.WriteMode.OVERWRITE);
+
+                datasource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+                    @Override
+                    public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                                   Tuple4<Long, Double, Long, Long> t2) {
+                        return new Tuple4<>(t1.f0, t1.f1 + t2.f1, t1.f2, t1.f3 + 1);
+                    }
+                }).writeAsCsv(output + "/sum.csv", FileSystem.WriteMode.OVERWRITE);
+
+                datasource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+                    @Override
+                    public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                                   Tuple4<Long, Double, Long, Long> t2) {
+                        return new Tuple4<>(t1.f0, (t1.f1 * t1.f3 + t2.f1 * t2.f3) / (t1.f3 + t2.f3), t1.f2, t1.f3 + t2.f3);
+                    }
+                }).writeAsCsv(output + "/avg.csv", FileSystem.WriteMode.OVERWRITE);
+
+                System.setProperty("tornado", "False");
+                datasource
+                        .reduceGroup(new OutliersDetectionGroupReduceFunction())
+                        .writeAsCsv(output + "/outliers.csv", FileSystem.WriteMode.OVERWRITE);
+            }
+            final JobExecutionResult jobExecutionResult = env.execute("SparkWorks DataSet Window Processor");
+
+            System.out.println(String.format("SparkWorks DataSet Window Processor Job took: %d ms with parallelism: %d",
+                    jobExecutionResult.getNetRuntime(TimeUnit.MILLISECONDS), env.getParallelism()));
+        } else {
+
+            System.setProperty("tornado", "True");
+            tuple4DataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+                @Override
+                public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                               Tuple4<Long, Double, Long, Long> t2) {
+                    return new Tuple4<>(t1.f0, Math.min(t1.f1, t2.f1), t1.f2, t1.f3 + 1);
+                }
+            }).writeAsCsv(output + "/min.csv", FileSystem.WriteMode.OVERWRITE);
+
+            tuple4DataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+                @Override
+                public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                               Tuple4<Long, Double, Long, Long> t2) {
+                    return new Tuple4<>(t1.f0, Math.max(t1.f1, t2.f1), t1.f2, t1.f3 + 1);
+                }
+            }).writeAsCsv(output + "/max.csv", FileSystem.WriteMode.OVERWRITE);
+
+            tuple4DataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+                @Override
+                public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                               Tuple4<Long, Double, Long, Long> t2) {
+                    return new Tuple4<>(t1.f0, t1.f1 + t2.f1, t1.f2, t1.f3 + 1);
+                }
+            }).writeAsCsv(output + "/sum.csv", FileSystem.WriteMode.OVERWRITE);
+
+            tuple4DataSource.groupBy(0, 2).reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
+                @Override
+                public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                               Tuple4<Long, Double, Long, Long> t2) {
+                    return new Tuple4<>(t1.f0, (t1.f1 * t1.f3 + t2.f1 * t2.f3) / (t1.f3 + t2.f3), t1.f2, t1.f3 + t2.f3);
+                }
+            }).writeAsCsv(output + "/avg.csv", FileSystem.WriteMode.OVERWRITE);
+
+            System.setProperty("tornado", "False");
+            tuple4DataSource
+                    .groupBy(0, 2)
+                    .reduceGroup(new OutliersDetectionGroupReduceFunction())
+                    .writeAsCsv(output + "/outliers.csv", FileSystem.WriteMode.OVERWRITE);
+
+            final JobExecutionResult jobExecutionResult = env.execute("SparkWorks DataSet Window Processor");
+
+            System.out.println(String.format("SparkWorks DataSet Window Processor Job took: %d ms with parallelism: %d",
+                    jobExecutionResult.getNetRuntime(TimeUnit.MILLISECONDS), env.getParallelism()));
+        }
     }
-    
-    public static class SparksSensorDataLineSplitterMapFunction
-            implements MapFunction<String, Tuple3<Long, Double, Long>> {
+
+    private static ArrayList<ArrayList<Tuple4<Long, Double, Long, Long>>> splitCollectionGroup(int fieldNumber, List<Tuple4<Long, Double, Long, Long>> input) {
+        ArrayList<ArrayList<Tuple4<Long, Double, Long, Long>>> lists = new ArrayList<>();
+        long previous = input.get(0).getField(fieldNumber);
+        long current;
+        ArrayList<Tuple4<Long, Double, Long, Long>> sublist = new ArrayList<>();
+        sublist.add(input.get(0));
+        for (int i = 1; i < input.size(); i++) {
+            Tuple4<Long, Double, Long, Long> t = input.get(i);
+            current = t.getField(fieldNumber);
+
+            if (current == previous) {
+                sublist.add(t);
+            } else {
+                lists.add(sublist);
+                sublist = new ArrayList<>();
+            }
+            previous = current;
+        }
+        lists.add(sublist);
+        return lists;
+    }
+
+    public static class SparksSensorDataLineSplitterMapFunction implements MapFunction<String, Tuple3<Long, Double, Long>>{
         
         @Override
         public Tuple3<Long, Double, Long> map(String line) {
@@ -186,8 +261,7 @@ public class SparksDataSetProcessor {
         
     }
     
-    public static class TimestampMapFunction implements
-            MapFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
+    public static class TimestampMapFunction implements MapFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
         
         public final int DEFAULT_WINDOW_MINUTES = 5;
         
@@ -223,8 +297,7 @@ public class SparksDataSetProcessor {
         }
     }
     
-    public static class SumGroupReduceFunction implements
-            GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
+    public static class SumGroupReduceFunction implements GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
         
         @Override
         public void reduce(Iterable<Tuple3<Long, Double, Long>> values, Collector<Tuple3<Long, Double, Long>> out) {
@@ -243,30 +316,28 @@ public class SparksDataSetProcessor {
         
     }
     
-    public static class AverageGroupReduceFunction implements
-            GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
+    public static class AverageGroupReduceFunction implements GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
         
         @Override
         public void reduce(Iterable<Tuple3<Long, Double, Long>> values, Collector<Tuple3<Long, Double, Long>> out) {
             Double sum = 0d;
-            long lenght = 0;
+            long length = 0;
             Long device = null;
             Long timestampWindow = null;
             for (Tuple3<Long, Double, Long> t : values) {
                 sum += (Double) t.getField(1);
-                lenght++;
+                length++;
                 device = t.getField(0);
                 timestampWindow = t.getField(2);
             }
             Objects.requireNonNull(device);
             Objects.requireNonNull(timestampWindow);
-            out.collect(new Tuple3<>(device, sum / lenght, timestampWindow));
+            out.collect(new Tuple3<>(device, sum / length, timestampWindow));
         }
         
     }
     
-    public static class MinGroupReduceFunction implements
-            GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
+    public static class MinGroupReduceFunction implements GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
         
         @Override
         public void reduce(Iterable<Tuple3<Long, Double, Long>> values,
@@ -286,8 +357,7 @@ public class SparksDataSetProcessor {
         
     }
     
-    public static class MaxGroupReduceFunction implements
-            GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
+    public static class MaxGroupReduceFunction implements GroupReduceFunction<Tuple3<Long, Double, Long>, Tuple3<Long, Double, Long>> {
         
         @Override
         public void reduce(Iterable<Tuple3<Long, Double, Long>> values, Collector<Tuple3<Long, Double, Long>> out) {
@@ -306,8 +376,7 @@ public class SparksDataSetProcessor {
         
     }
     
-    public static class OutliersDetectionGroupReduceFunction implements
-            GroupReduceFunction<Tuple4<Long, Double, Long, Long>, Tuple3<Long, Double, Long>> {
+    public static class OutliersDetectionGroupReduceFunction implements GroupReduceFunction<Tuple4<Long, Double, Long, Long>, Tuple3<Long, Double, Long>> {
         
         @Override
         public void reduce(Iterable<Tuple4<Long, Double, Long, Long>> values, Collector<Tuple3<Long, Double, Long>> out) {
@@ -335,9 +404,6 @@ public class SparksDataSetProcessor {
                     out.collect(new Tuple3<>(finalDevice, sd, finalTimestampWindow));
                 }
             });
-            
         }
-        
     }
-    
 }
