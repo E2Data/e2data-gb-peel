@@ -95,38 +95,21 @@ public class SparkWorksAllReduce {
          */
 
         System.setProperty("tornado.flink", "True");
-        datasource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
-            @Override
-            public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
-                                                           Tuple4<Long, Double, Long, Long> t2) {
-                return new Tuple4<>(t1.f0, Math.min(t1.f1, t2.f1), t1.f2, t1.f3 + 1);
-            }
-        }).writeAsCsv(output + "/min.csv", FileSystem.WriteMode.OVERWRITE);
+        datasource
+                .reduce(new ReduceMin())
+                .writeAsCsv(output + "/min.csv", FileSystem.WriteMode.OVERWRITE);
 
-//		datasource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
-//			@Override
-//			public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
-//														   Tuple4<Long, Double, Long, Long> t2) {
-//				return new Tuple4<>(t1.f0, Math.max(t1.f1, t2.f1), t1.f2, t1.f3 + 1);
-//			}
-//		}).writeAsCsv(output + "/max.csv", FileSystem.WriteMode.OVERWRITE);
+        datasource
+                .reduce(new ReduceMax())
+                .writeAsCsv(output + "/max.csv", FileSystem.WriteMode.OVERWRITE);
 
-//
-//		datasource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
-//			@Override
-//			public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
-//														   Tuple4<Long, Double, Long, Long> t2) {
-//				return new Tuple4<>(t1.f0, t1.f1 + t2.f1, t1.f2, t1.f3 + 1);
-//			}
-//		}).writeAsCsv(output + "/sum.csv", FileSystem.WriteMode.OVERWRITE);
-//
-//		datasource.reduce(new ReduceFunction<Tuple4<Long, Double, Long, Long>>() {
-//			@Override
-//			public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
-//														   Tuple4<Long, Double, Long, Long> t2) {
-//				return new Tuple4<>(t1.f0, (t1.f1 * t1.f3 + t2.f1 * t2.f3) / (t1.f3 + t2.f3), t1.f2, t1.f3 + t2.f3);
-//			}
-//		}).writeAsCsv(output + "/avg.csv", FileSystem.WriteMode.OVERWRITE);
+        datasource
+                .reduce(new ReduceSum())
+                .writeAsCsv(output + "/sum.csv", FileSystem.WriteMode.OVERWRITE);
+
+        datasource
+                .reduce(new ReduceAvg())
+                .writeAsCsv(output + "/avg.csv", FileSystem.WriteMode.OVERWRITE);
 
         datasource
                 .reduceGroup(new OutliersDetectionGroupReduceFunction())
@@ -217,6 +200,30 @@ public class SparkWorksAllReduce {
         public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
                                                        Tuple4<Long, Double, Long, Long> t2) {
             return new Tuple4<>(t1.f0, Math.min(t1.f1, t2.f1), t1.f2, t1.f3 + 1);
+        }
+    }
+
+    public static class ReduceMax implements ReduceFunction<Tuple4<Long, Double, Long, Long>> {
+        @Override
+        public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                       Tuple4<Long, Double, Long, Long> t2) {
+            return new Tuple4<>(t1.f0, Math.max(t1.f1, t2.f1), t1.f2, t1.f3 + 1);
+        }
+    }
+
+    public static class ReduceSum implements ReduceFunction<Tuple4<Long, Double, Long, Long>> {
+        @Override
+        public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                       Tuple4<Long, Double, Long, Long> t2) {
+            return new Tuple4<>(t1.f0, t1.f1 + t2.f1, t1.f2, t1.f3 + 1);
+        }
+    }
+
+    public static class ReduceAvg implements ReduceFunction<Tuple4<Long, Double, Long, Long>> {
+        @Override
+        public Tuple4<Long, Double, Long, Long> reduce(Tuple4<Long, Double, Long, Long> t1,
+                                                       Tuple4<Long, Double, Long, Long> t2) {
+            return new Tuple4<>(t1.f0, (t1.f1 * t1.f3 + t2.f1 * t2.f3) / (t1.f3 + t2.f3), t1.f2, t1.f3 + t2.f3);
         }
     }
 
