@@ -53,16 +53,6 @@
         </constructor-arg>
     </bean>
 
-    <bean id="e2data-hdfs-3.1.1" class="org.peelframework.hadoop.beans.system.HDFS3">
-        <constructor-arg name="version" value="3.1.1" />
-        <constructor-arg name="configKey" value="hadoop-3" />
-        <constructor-arg name="lifespan" value="SUITE" />
-        <constructor-arg name="mc" ref="mc"/>
-        <constructor-arg name="dependencies">
-            <set value-type="org.peelframework.core.beans.system.System" />
-        </constructor-arg>
-    </bean>
-
     <bean id="e2data-flink-1.11.1" class="org.peelframework.flink.beans.system.FlinkStandaloneCluster" parent="system">
         <constructor-arg name="version" value="1.11.1" />
         <constructor-arg name="configKey" value="flink" />
@@ -78,7 +68,7 @@
         <constructor-arg name="lifespan" value="EXPERIMENT"/>
         <constructor-arg name="dependencies">
             <set value-type="org.peelframework.core.beans.system.System">
-                <ref bean="e2data-hdfs-3.1.1"/>
+                <ref bean="hdfs-3.1.1"/>
                 <ref bean="e2data-yarn-3.1.1"/>
                 <ref bean="e2data-pdu-0.0.1"/>
             </set>

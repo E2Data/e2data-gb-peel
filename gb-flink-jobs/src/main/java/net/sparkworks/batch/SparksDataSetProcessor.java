@@ -76,7 +76,7 @@ public class SparksDataSetProcessor {
         }
 
         // Parallelism to 1 for debugging
-        env.setParallelism(1);
+        // env.setParallelism(1);
 
         final DataSource<String> stringDataSource = env.readTextFile(filename);
 

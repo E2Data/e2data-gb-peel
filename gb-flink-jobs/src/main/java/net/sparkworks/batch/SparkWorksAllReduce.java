@@ -32,7 +32,7 @@ public class SparkWorksAllReduce {
 
     public static void main(String[] args) throws Exception {
 
-        final ExecutionEnvironment env = ExecutionEnvironment.createLocalEnvironment();
+        final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
         final String filename;
         final String output;
@@ -70,12 +70,9 @@ public class SparkWorksAllReduce {
             env.setParallelism(parallelism);
         }
 
-
-        env.setParallelism(8);
-
         final DataSource<String> stringDataSource = env.readTextFile(filename);
 
-        System.setProperty("tornado.flink", "False");
+        //System.setProperty("tornado.flink", "False");
         final MapOperator<Tuple3<Long, Double, Long>, Tuple4<Long, Double, Long, Long>> groupedDataSource =
                 stringDataSource
                         .map(new SparksSensorDataLineSplitterMapFunction())
@@ -94,7 +91,7 @@ public class SparkWorksAllReduce {
          * Currently we can evaluate in TornadoVM two functions together. This is due to memory limitations.
          */
 
-        System.setProperty("tornado.flink", "True");
+        //System.setProperty("tornado.flink", "True");
         datasource
                 .reduce(new ReduceMin())
                 .writeAsCsv(output + "/min.csv", FileSystem.WriteMode.OVERWRITE);
