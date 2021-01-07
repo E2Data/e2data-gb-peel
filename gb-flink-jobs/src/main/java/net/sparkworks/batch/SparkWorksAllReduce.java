@@ -69,23 +69,9 @@ public class SparkWorksAllReduce {
         if (Objects.nonNull(parallelism)) {
             env.setParallelism(parallelism);
         }
-
-        final DataSource<String> stringDataSource = env.readTextFile(filename);
-
-        //System.setProperty("tornado.flink", "False");
-        final MapOperator<Tuple3<Long, Double, Long>, Tuple4<Long, Double, Long, Long>> groupedDataSource =
-                stringDataSource
-                        .map(new SparksSensorDataLineSplitterMapFunction())
-                        .map(new TimestampMapFunction())
-                        .map(new MapFunction<Tuple3<Long, Double, Long>, Tuple4<Long, Double, Long, Long>>() {
-                            @Override
-                            public Tuple4<Long, Double, Long, Long> map(Tuple3<Long, Double, Long> value) {
-                                return new Tuple4<>(value.f0, value.f1, value.f2, 1L);
-                            }
-                        });
-
-        List<Tuple4<Long, Double, Long, Long>> collect1 = groupedDataSource.collect();
-        DataSource<Tuple4<Long, Double, Long, Long>> datasource = env.fromCollection(collect1);
+        
+        final DataSource<Tuple4<Long, Double, Long, Long>> datasource = env
+                .readCsvFile(filename).types(Long.class, Double.class, Long.class, Long.class);
 
         /**
          * Currently we can evaluate in TornadoVM two functions together. This is due to memory limitations.
