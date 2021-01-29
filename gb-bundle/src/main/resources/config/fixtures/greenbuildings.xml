@@ -54,6 +54,56 @@
         <constructor-arg name="config" value=""/>
     </bean>
 
+    <!-- experiment for tornado comparison min reduction parallelism 8 -->
+    <bean id="experiment.gb.min.60" parent="experiment.flink-yarn-1.11.1" abstract="true">
+        <constructor-arg name="command">
+            <value><![CDATA[
+              -v -c net.sparkworks.batch.SparkWorksE2Data  \
+              ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
+              -- parallelism 8 \
+              -- reduceNumber 1 \
+              --filename ${system.hadoop-3.path.input}/dataset_grouped_2000_1_60 \
+              --output ${system.hadoop-3.path.output}
+            ]]></value>
+        </constructor-arg>
+        <constructor-arg name="inputs">
+            <set>
+                <ref bean="dataset.gb.dataset_grouped_2000_1_60" />
+            </set>
+        </constructor-arg>
+        <constructor-arg name="outputs">
+            <set value-type="org.peelframework.core.beans.data.ExperimentOutput">
+                <ref bean="gb.output"/>
+            </set>
+        </constructor-arg>
+        <constructor-arg name="config" value=""/>
+    </bean>
+
+    <!-- experiment for tornado comparison avg reduction parallelism 8 -->
+    <bean id="experiment.gb.avg.60" parent="experiment.flink-yarn-1.11.1" abstract="true">
+        <constructor-arg name="command">
+            <value><![CDATA[
+              -v -c net.sparkworks.batch.SparkWorksE2Data  \
+              ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
+              -- parallelism 8 \
+              -- reduceNumber 4 \
+              --filename ${system.hadoop-3.path.input}/dataset_grouped_2000_1_60 \
+              --output ${system.hadoop-3.path.output}
+            ]]></value>
+        </constructor-arg>
+        <constructor-arg name="inputs">
+            <set>
+                <ref bean="dataset.gb.dataset_grouped_2000_1_60" />
+            </set>
+        </constructor-arg>
+        <constructor-arg name="outputs">
+            <set value-type="org.peelframework.core.beans.data.ExperimentOutput">
+                <ref bean="gb.output"/>
+            </set>
+        </constructor-arg>
+        <constructor-arg name="config" value=""/>
+    </bean>
+
     <!--************************************************************************
     * Inputs
     *************************************************************************-->
@@ -253,6 +303,60 @@
                 <constructor-arg name="prototypes">
                     <list value-type="org.peelframework.core.beans.experiment.Experiment">
                         <bean parent="experiment.gb.720">
+                            <constructor-arg name="name" value="gb.__topXXX-X__"/>
+                            <constructor-arg name="config">
+                                <value><![CDATA[
+                                  system.default.config.slaves                           = ${env.scale-out.__topXXX-X__.workers}
+                                  system.flink.config.yaml.taskmanager.numberOfTaskSlots = ${env.scale-out.__topXXX-X__.parallelism.per-node}
+                                  system.flink.config.yaml.parallelism.default           = ${env.scale-out.__topXXX-X__.parallelism.total}
+                                ]]></value>
+                            </constructor-arg>
+                        </bean>
+                    </list>
+                </constructor-arg>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="gb.iccs.single.min.60" class="org.peelframework.core.beans.experiment.ExperimentSuite">
+        <constructor-arg name="experiments">
+            <bean class="org.peelframework.core.beans.experiment.ExperimentSequence">
+                <constructor-arg name="paramName" value="topXXX-X"/>
+                <constructor-arg name="paramVals">
+                    <list>
+                        <value>top001-8</value>
+                    </list>
+                </constructor-arg>
+                <constructor-arg name="prototypes">
+                    <list value-type="org.peelframework.core.beans.experiment.Experiment">
+                        <bean parent="experiment.gb.min.60">
+                            <constructor-arg name="name" value="gb.__topXXX-X__"/>
+                            <constructor-arg name="config">
+                                <value><![CDATA[
+                                  system.default.config.slaves                           = ${env.scale-out.__topXXX-X__.workers}
+                                  system.flink.config.yaml.taskmanager.numberOfTaskSlots = ${env.scale-out.__topXXX-X__.parallelism.per-node}
+                                  system.flink.config.yaml.parallelism.default           = ${env.scale-out.__topXXX-X__.parallelism.total}
+                                ]]></value>
+                            </constructor-arg>
+                        </bean>
+                    </list>
+                </constructor-arg>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="gb.iccs.single.avg.60" class="org.peelframework.core.beans.experiment.ExperimentSuite">
+        <constructor-arg name="experiments">
+            <bean class="org.peelframework.core.beans.experiment.ExperimentSequence">
+                <constructor-arg name="paramName" value="topXXX-X"/>
+                <constructor-arg name="paramVals">
+                    <list>
+                        <value>top001-8</value>
+                    </list>
+                </constructor-arg>
+                <constructor-arg name="prototypes">
+                    <list value-type="org.peelframework.core.beans.experiment.Experiment">
+                        <bean parent="experiment.gb.avg.60">
                             <constructor-arg name="name" value="gb.__topXXX-X__"/>
                             <constructor-arg name="config">
                                 <value><![CDATA[
