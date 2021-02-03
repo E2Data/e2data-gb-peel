@@ -61,7 +61,7 @@
               -v -c net.sparkworks.batch.SparkWorksE2Data  \
               ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
               -- parallelism 8 \
-              -- reduceNumber 1 \
+              -- reduceNumber 6 \
               --filename ${system.hadoop-3.path.input}/dataset_grouped_2000_1_60 \
               --output ${system.hadoop-3.path.output}
             ]]></value>
@@ -86,7 +86,7 @@
               -v -c net.sparkworks.batch.SparkWorksE2Data  \
               ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
               -- parallelism 8 \
-              -- reduceNumber 4 \
+              -- reduceNumber 5 \
               --filename ${system.hadoop-3.path.input}/dataset_grouped_2000_1_60 \
               --output ${system.hadoop-3.path.output}
             ]]></value>
