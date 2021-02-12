@@ -127,8 +127,24 @@ public class SparkWorksE2Data {
             datasource
                     .reduce(new ReduceSum())
                     .writeAsCsv(output + "/sum.csv", FileSystem.WriteMode.OVERWRITE);
+        } else if (reduceNumber == 8) {
+            System.out.println("Running MIN");
+            datasource
+                    .reduce(new ReduceAvg())
+                    .writeAsCsv(output + "/avg.csv", FileSystem.WriteMode.OVERWRITE);
+            System.out.println("Running MAX");
+            datasource
+                    .reduce(new ReduceMax())
+                    .writeAsCsv(output + "/max.csv", FileSystem.WriteMode.OVERWRITE);
+            System.out.println("Running SUM");
+            datasource
+                    .reduce(new ReduceSum())
+                    .writeAsCsv(output + "/sum.csv", FileSystem.WriteMode.OVERWRITE);
+            System.out.println("Running AVG");
+            datasource
+                    .reduce(new ReduceAvg())
+                    .writeAsCsv(output + "/avg.csv", FileSystem.WriteMode.OVERWRITE);
         }
-
 
         datasource
                 .reduceGroup(new OutliersDetectionGroupReduceFunction())
