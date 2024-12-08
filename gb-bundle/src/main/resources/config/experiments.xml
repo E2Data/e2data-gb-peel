@@ -8,7 +8,7 @@
 
     <context:annotation-config/>
 
-    <!-- Scan for annotated Peel components in the 'eu.e2data.benchmarks' package -->
+    <!-- Scan for annotated Peel components in the 'eu.e2data.benchmarks.kmeans' package -->
     <context:component-scan base-package="eu.e2data.benchmarks" use-default-filters="false">
         <context:include-filter type="annotation" expression="org.springframework.stereotype.Service"/>
         <context:include-filter type="annotation" expression="org.springframework.stereotype.Component"/>
@@ -19,6 +19,20 @@
 
     <!-- custom system beans -->
     <import resource="fixtures/systems.xml"/>
+
+    <!--
+         vanilla-flink-hadoop-experiments.xml uses the normal Flink and
+         Hadoop installations without E2Data modifications
+    -->
+    <import resource="fixtures/vanilla-flink-hadoop-experiments.xml"/>
+
+    <!--
+         d2data-flink-hadoop-experiments.xml uses the Flink and
+         Hadoop installations with E2Data modifications
+    <import resource="fixtures/e2data-flink-hadoop-experiments.xml"/>
+    -->
+
+    <!-- experiment beans -->
     <import resource="fixtures/greenbuildings.xml"/>
 
 </beans>

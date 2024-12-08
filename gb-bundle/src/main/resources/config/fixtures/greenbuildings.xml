@@ -10,12 +10,13 @@
     *************************************************************************-->
 
     <!-- experiment with fixed dataset -->
-    <bean id="experiment.gb" parent="experiment.flink-1.9.1" abstract="true">
+    <bean id="experiment.gb.5" parent="experiment.flink-yarn-1.11.1" abstract="true">
         <constructor-arg name="command">
             <value><![CDATA[
-              -v -c net.sparkworks.batch.SparksDataSetProcessor  \
+              -v -c net.sparkworks.batch.SparkWorksAllReduce  \
               ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
-              --filename ${system.hadoop-3.path.input}/dataset_2000_1_5
+              --filename ${system.hadoop-3.path.input}/dataset_2000_1_5 \
+              --output ${system.hadoop-3.path.output}
             ]]></value>
         </constructor-arg>
         <constructor-arg name="inputs">
@@ -31,12 +32,13 @@
         <constructor-arg name="config" value=""/>
     </bean>
 
-    <bean id="experiment.gb.60" parent="experiment.flink-1.9.1" abstract="true">
+    <bean id="experiment.gb.60" parent="experiment.flink-yarn-1.11.1" abstract="true">
         <constructor-arg name="command">
             <value><![CDATA[
-              -v -c net.sparkworks.batch.SparksDataSetProcessor  \
+              -v -c net.sparkworks.batch.SparkWorksAllReduce  \
               ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
-              --filename ${system.hadoop-3.path.input}/dataset_2000_1_60
+              --filename ${system.hadoop-3.path.input}/dataset_2000_1_60 \
+              --output ${system.hadoop-3.path.output}
             ]]></value>
         </constructor-arg>
         <constructor-arg name="inputs">
@@ -46,7 +48,29 @@
         </constructor-arg>
         <constructor-arg name="outputs">
             <set value-type="org.peelframework.core.beans.data.ExperimentOutput">
-                <ref bean="gb.output.60"/>
+                <ref bean="gb.output"/>
+            </set>
+        </constructor-arg>
+        <constructor-arg name="config" value=""/>
+    </bean>
+
+    <bean id="experiment.gb.720" parent="experiment.flink-yarn-1.11.1" abstract="true">
+        <constructor-arg name="command">
+            <value><![CDATA[
+              -v -c net.sparkworks.batch.SparkWorksAllReduce  \
+              ${app.path.apps}/gb-flink-jobs-1.0-SNAPSHOT.jar \
+              --filename ${system.hadoop-3.path.input}/dataset_2000_1_720 \
+              --output ${system.hadoop-3.path.output}
+            ]]></value>
+        </constructor-arg>
+        <constructor-arg name="inputs">
+            <set>
+                <ref bean="dataset.gb.dataset_2000_1_720" />
+            </set>
+        </constructor-arg>
+        <constructor-arg name="outputs">
+            <set value-type="org.peelframework.core.beans.data.ExperimentOutput">
+                <ref bean="gb.output"/>
             </set>
         </constructor-arg>
         <constructor-arg name="config" value=""/>
@@ -68,17 +92,18 @@
         <constructor-arg name="fs" ref="hdfs-3.1.1"/>
     </bean>
 
+    <bean id="dataset.gb.dataset_2000_1_720" class="org.peelframework.core.beans.data.CopiedDataSet">
+        <constructor-arg name="src" value="${app.path.datasets}/dataset_2000_1_720"/>
+        <constructor-arg name="dst" value="${system.hadoop-3.path.input}/dataset_2000_1_720"/>
+        <constructor-arg name="fs" ref="hdfs-3.1.1"/>
+    </bean>
+
     <!--************************************************************************
     * Output
     *************************************************************************-->
 
     <bean id="gb.output" class="org.peelframework.core.beans.data.ExperimentOutput">
         <constructor-arg name="path" value="${system.hadoop-3.path.output}/"/>
-        <constructor-arg name="fs" ref="hdfs-3.1.1"/>
-    </bean>
-
-    <bean id="gb.output.60" class="org.peelframework.core.beans.data.ExperimentOutput">
-        <constructor-arg name="path" value="${system.hadoop-3.path.output}/2000_1_60/"/>
         <constructor-arg name="fs" ref="hdfs-3.1.1"/>
     </bean>
 
@@ -90,21 +115,15 @@
     <bean id="gb.default" class="org.peelframework.core.beans.experiment.ExperimentSuite">
         <constructor-arg name="experiments">
             <list value-type="org.peelframework.core.beans.experiment.Experiment">
-                <bean parent="experiment.gb">
+                <bean parent="experiment.gb.5">
                     <constructor-arg name="name" value="gb.default"/>
-                    <constructor-arg name="config">
-                        <value><![CDATA[
-                                  system.flink.config.parallelism         = 1
-                                  system.flink.config.numberOfTaskSlots   = 1
-                        ]]></value>
-                    </constructor-arg>
                 </bean>
             </list>
         </constructor-arg>
     </bean>
 
     <!-- suite for KALEAO -->
-    <bean id="gb.scale-out" class="org.peelframework.core.beans.experiment.ExperimentSuite">
+    <bean id="gb.kmax.scale-out.5" class="org.peelframework.core.beans.experiment.ExperimentSuite">
         <constructor-arg name="experiments">
             <bean class="org.peelframework.core.beans.experiment.ExperimentSequence">
                 <constructor-arg name="paramName" value="topXXX-X"/>
@@ -129,7 +148,7 @@
                 </constructor-arg>
                 <constructor-arg name="prototypes">
                     <list value-type="org.peelframework.core.beans.experiment.Experiment">
-                        <bean parent="experiment.gb">
+                        <bean parent="experiment.gb.5">
                             <constructor-arg name="name" value="gb.__topXXX-X__"/>
                             <constructor-arg name="config">
                                 <value><![CDATA[
@@ -145,7 +164,7 @@
         </constructor-arg>
     </bean>
 
-    <bean id="gb.scale-out-60" class="org.peelframework.core.beans.experiment.ExperimentSuite">
+    <bean id="gb.kmax.scale-out.60" class="org.peelframework.core.beans.experiment.ExperimentSuite">
         <constructor-arg name="experiments">
             <bean class="org.peelframework.core.beans.experiment.ExperimentSequence">
                 <constructor-arg name="paramName" value="topXXX-X"/>
@@ -185,9 +204,56 @@
             </bean>
         </constructor-arg>
     </bean>
+
+    <bean id="gb.kmax.scale-out.720" class="org.peelframework.core.beans.experiment.ExperimentSuite">
+        <constructor-arg name="experiments">
+            <bean class="org.peelframework.core.beans.experiment.ExperimentSequence">
+                <constructor-arg name="paramName" value="topXXX-X"/>
+                <constructor-arg name="paramVals">
+                    <list>
+                        <value>top001-1</value>
+                        <value>top001-2</value>
+                        <value>top001-4</value>
+                        <value>top002-1</value>
+                        <value>top002-2</value>
+                        <value>top002-4</value>
+                        <value>top004-1</value>
+                        <value>top004-2</value>
+                        <value>top004-4</value>
+                        <value>top008-1</value>
+                        <value>top008-2</value>
+                        <value>top008-4</value>
+                        <value>top016-1</value>
+                        <value>top016-2</value>
+                        <value>top016-4</value>
+                    </list>
+                </constructor-arg>
+                <constructor-arg name="prototypes">
+                    <list value-type="org.peelframework.core.beans.experiment.Experiment">
+                        <bean parent="experiment.gb.720">
+                            <constructor-arg name="name" value="gb.__topXXX-X__"/>
+                            <constructor-arg name="config">
+                                <value><![CDATA[
+                                  system.default.config.slaves                           = ${env.scale-out.__topXXX-X__.workers}
+                                  system.flink.config.yaml.taskmanager.numberOfTaskSlots = ${env.scale-out.__topXXX-X__.parallelism.per-node}
+                                  system.flink.config.yaml.parallelism.default           = ${env.scale-out.__topXXX-X__.parallelism.total}
+                                ]]></value>
+                            </constructor-arg>
+                        </bean>
+                    </list>
+                </constructor-arg>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+
+
+
+
+
 
     <!-- suite for ICCS -->
-    <bean id="gb.iccs.scale-out" class="org.peelframework.core.beans.experiment.ExperimentSuite">
+    <bean id="gb.iccs.scale-out.5" class="org.peelframework.core.beans.experiment.ExperimentSuite">
         <constructor-arg name="experiments">
             <bean class="org.peelframework.core.beans.experiment.ExperimentSequence">
                 <constructor-arg name="paramName" value="topXXX-X"/>
@@ -213,7 +279,7 @@
                 </constructor-arg>
                 <constructor-arg name="prototypes">
                     <list value-type="org.peelframework.core.beans.experiment.Experiment">
-                        <bean parent="experiment.gb">
+                        <bean parent="experiment.gb.5">
                             <constructor-arg name="name" value="gb.__topXXX-X__"/>
                             <constructor-arg name="config">
                                 <value><![CDATA[
@@ -229,7 +295,7 @@
         </constructor-arg>
     </bean>
 
-    <bean id="gb.iccs.scale-out-60" class="org.peelframework.core.beans.experiment.ExperimentSuite">
+    <bean id="gb.iccs.scale-out.60" class="org.peelframework.core.beans.experiment.ExperimentSuite">
         <constructor-arg name="experiments">
             <bean class="org.peelframework.core.beans.experiment.ExperimentSequence">
                 <constructor-arg name="paramName" value="topXXX-X"/>
@@ -256,6 +322,48 @@
                 <constructor-arg name="prototypes">
                     <list value-type="org.peelframework.core.beans.experiment.Experiment">
                         <bean parent="experiment.gb.60">
+                            <constructor-arg name="name" value="gb.__topXXX-X__"/>
+                            <constructor-arg name="config">
+                                <value><![CDATA[
+                                  system.default.config.slaves                           = ${env.scale-out.__topXXX-X__.workers}
+                                  system.flink.config.yaml.taskmanager.numberOfTaskSlots = ${env.scale-out.__topXXX-X__.parallelism.per-node}
+                                  system.flink.config.yaml.parallelism.default           = ${env.scale-out.__topXXX-X__.parallelism.total}
+                                ]]></value>
+                            </constructor-arg>
+                        </bean>
+                    </list>
+                </constructor-arg>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="gb.iccs.scale-out.720" class="org.peelframework.core.beans.experiment.ExperimentSuite">
+        <constructor-arg name="experiments">
+            <bean class="org.peelframework.core.beans.experiment.ExperimentSequence">
+                <constructor-arg name="paramName" value="topXXX-X"/>
+                <constructor-arg name="paramVals">
+                    <list>
+                        <value>top001-1</value>
+                        <value>top001-2</value>
+                        <value>top001-4</value>
+                        <value>top001-8</value>
+                        <value>top002-1</value>
+                        <value>top002-2</value>
+                        <value>top002-4</value>
+                        <value>top002-8</value>
+                        <value>top004-1</value>
+                        <value>top004-2</value>
+                        <value>top004-4</value>
+                        <value>top004-8</value>
+                        <value>top008-1</value>
+                        <value>top008-2</value>
+                        <value>top008-4</value>
+                        <value>top008-8</value>
+                    </list>
+                </constructor-arg>
+                <constructor-arg name="prototypes">
+                    <list value-type="org.peelframework.core.beans.experiment.Experiment">
+                        <bean parent="experiment.gb.720">
                             <constructor-arg name="name" value="gb.__topXXX-X__"/>
                             <constructor-arg name="config">
                                 <value><![CDATA[

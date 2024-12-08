@@ -17,7 +17,7 @@
 
         <!-- Flink -->
 <!--        <flink.version>1.0.3</flink.version>-->
-        <flink.version>1.8.0</flink.version>
+        <flink.version>1.11.1</flink.version>
     </properties>
 
     <dependencies>
